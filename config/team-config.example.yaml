@@ -1,0 +1,66 @@
+# 团队配置示例
+# 复制此文件到 ~/.smartflow/config/teams/{teamId}.yaml 并修改配置
+
+# 团队基本信息
+teamId: "demo-team"
+teamName: "示例团队"
+
+# 飞书应用配置
+# 需要在飞书开放平台创建企业自建应用，获取AppId和AppSecret
+feishu:
+  appId: "cli_xxxxxxxxxxxxxx"
+  appSecret: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  scopes:
+    - "docx:document:readonly"
+    - "drive:drive:readonly"
+    - "task:task:readonly"
+    - "task:tasklist:readonly"
+    - "calendar:calendar:readonly"
+    - "vc:meeting:readonly"
+    - "minutes:minutes:readonly"
+    - "im:message:send"
+    - "im:chat:readonly"
+
+# 数据源配置
+dataSources:
+  # 文档采集配置
+  docs:
+    enabled: true
+    rootFolderToken: "folder_xxxxxxxxxxxxxx" # 要采集的根目录Token
+    includeUsers: [] # 只包含这些用户修改的文档，为空则包含所有
+    excludeDirs: [] # 要排除的目录路径
+
+  # 任务采集配置
+  tasks:
+    enabled: true
+    projectIds: ["xxxxxxxxxxxxxx"] # 要采集的任务项目ID列表
+
+  # 会议采集配置
+  meetings:
+    enabled: true
+    calendarIds: ["xxxxxxxxxxxxxx"] # 要采集的日历ID列表
+
+# 周报生成配置
+generate:
+  cycle: "weekly" # 生成周期: weekly(每周)/biweekly(双周)/monthly(每月)
+  template: "default" # 模板名称
+  includeRisks: true # 是否包含风险预警
+  includeNextWeekPlan: true # 是否包含下周计划
+  detailLevel: "medium" # 详细程度: low/medium/high
+
+# 推送配置
+push:
+  enabled: true # 是否启用自动推送
+  cronExpression: "0 18 * * 5" # 推送时间，cron表达式，默认每周五18:00
+  channels: # 推送渠道
+    - type: "group" # 群聊
+      id: "oc_xxxxxxxxxxxxxx" # 群聊ID
+    - type: "user" # 用户
+      id: "ou_xxxxxxxxxxxxxx" # 用户ID
+  needAudit: false # 是否需要审核
+  auditorId: "ou_xxxxxxxxxxxxxx" # 审核人用户ID
+
+# 过滤规则
+filters:
+  excludeKeywords: ["测试", "草稿"] # 排除包含这些关键词的内容
+  excludeUsers: ["ou_xxxxxxxxxxxxxx"] # 排除这些用户的内容

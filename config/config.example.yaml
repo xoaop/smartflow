@@ -1,0 +1,17 @@
+# 全局配置示例
+# 复制此文件到 ~/.smartflow/config/config.yaml 并修改配置
+
+# 默认团队ID
+defaultTeamId: "demo-team"
+
+# 日志级别: error/warn/info/debug
+logLevel: "info"
+
+# 数据存储目录
+dataDir: "~/.smartflow/data"
+
+# 大模型配置
+llm:
+  apiKey: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # Claude API Key
+  # baseUrl: "https://api.anthropic.com" # 自定义API地址，用于代理
+  model: "claude-3-5-sonnet-20240620" # 使用的模型
