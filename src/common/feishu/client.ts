@@ -19,7 +19,6 @@ export class FeishuClient {
       appId: teamConfig.feishu.appId,
       appSecret: teamConfig.feishu.appSecret,
       disableTokenCache: true, // 我们自己管理token缓存
-      logLevel: 3, // 日志级别：0=debug,1=info,2=warn,3=error
     });
   }
 
@@ -44,13 +43,21 @@ export class FeishuClient {
         throw new Error(`获取飞书租户Token失败: ${response.msg}`);
       }
 
-      this.tenantAccessToken = response.data.tenant_access_token;
-      this.tokenExpireTime = now + response.data.expire * 1000;
+      if (!response.data) {
+        throw new Error('获取飞书租户Token失败：响应数据为空');
+      }
+
+      const tokenData = response.data as { tenant_access_token: string; expire: number };
+      this.tenantAccessToken = tokenData.tenant_access_token;
+      this.tokenExpireTime = now + tokenData.expire * 1000;
       logger.debug('飞书租户Token获取成功', {
         teamId: this.teamConfig.teamId,
-        expireIn: response.data.expire
+        expireIn: tokenData.expire
       });
 
+      if (!this.tenantAccessToken) {
+        throw new Error('获取飞书租户Token失败：Token为空');
+      }
       return this.tenantAccessToken;
     } catch (error) {
       logger.error('获取飞书租户Token失败', {

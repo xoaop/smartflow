@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(node dist/cli/index.js --help)",
+      "Bash(node dist/cli/index.js health)"
+    ]
+  }
+}

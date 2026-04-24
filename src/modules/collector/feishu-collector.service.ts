@@ -4,7 +4,7 @@ import { TaskCollector } from './task-collector';
 import { MeetingCollector } from './meeting-collector';
 import { CollectedData, TeamConfig, TimeRange } from '../../types';
 import { Logger } from '../../common/logger/logger';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 
 const logger = Logger.getInstance();
 

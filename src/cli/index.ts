@@ -12,8 +12,19 @@ import { Logger } from '../common/logger/logger';
 const logger = Logger.getInstance();
 const configService = TeamConfigService.getInstance();
 const collectorService = new FeishuCollectorService();
-const generatorService = new ReportGeneratorService();
-const schedulerService = SchedulerService.getInstance();
+// 懒加载服务，避免在配置加载前初始化
+let generatorService: ReportGeneratorService;
+let schedulerService: SchedulerService;
+
+// 初始化服务的函数，在配置加载后调用
+function initServices() {
+  if (!generatorService) {
+    generatorService = new ReportGeneratorService();
+  }
+  if (!schedulerService) {
+    schedulerService = SchedulerService.getInstance();
+  }
+}
 
 const program = new Command();
 
@@ -34,6 +45,9 @@ program
     } else {
       logger.setLevel(globalConfig.logLevel);
     }
+
+    // 初始化服务
+    initServices();
   });
 
 // 配置相关命令
@@ -138,7 +152,7 @@ generateCommand
 
       // 2. 生成周报
       console.log(chalk.gray('2/3 正在生成周报内容...'));
-      const report = await generatorService.generate(collectedData, teamConfig);
+      const report = await generatorService!.generate(collectedData, teamConfig);
       console.log(chalk.green('   周报生成完成'));
 
       // 3. 输出或推送
@@ -285,7 +299,7 @@ scheduleCommand
   .action(async () => {
     try {
       console.log(chalk.blue('启动定时任务服务...'));
-      await schedulerService.start();
+      await schedulerService!.start();
       console.log(chalk.green('✅ 定时任务服务已启动，按 Ctrl+C 停止'));
 
       // 保持进程运行
@@ -294,7 +308,7 @@ scheduleCommand
       // 处理退出信号
       process.on('SIGINT', () => {
         console.log(chalk.yellow('\n正在停止定时任务服务...'));
-        schedulerService.stop();
+        schedulerService!.stop();
         console.log(chalk.green('✅ 定时任务服务已停止'));
         process.exit(0);
       });
@@ -310,7 +324,7 @@ scheduleCommand
   .description('列出所有定时任务')
   .action(async () => {
     try {
-      const statuses = schedulerService.getJobStatuses();
+      const statuses = schedulerService!.getJobStatuses();
 
       if (statuses.length === 0) {
         console.log(chalk.yellow('暂无定时任务'));
@@ -340,7 +354,7 @@ scheduleCommand
   .action(async (teamId) => {
     try {
       console.log(chalk.blue(`手动触发团队 ${teamId} 的任务...`));
-      await schedulerService.triggerJob(teamId);
+      await schedulerService!.triggerJob(teamId);
       console.log(chalk.green('✅ 任务执行完成'));
     } catch (error) {
       console.error(chalk.red('执行任务失败:'), (error as Error).message);
@@ -360,7 +374,7 @@ scheduleCommand
         process.exit(1);
       }
 
-      await schedulerService.scheduleJob(teamConfig);
+      await schedulerService!.scheduleJob(teamConfig);
       console.log(chalk.green(`✅ 已为团队 ${teamId} 添加定时任务，Cron: ${teamConfig.push.cronExpression}`));
     } catch (error) {
       console.error(chalk.red('添加定时任务失败:'), (error as Error).message);
@@ -373,7 +387,7 @@ scheduleCommand
   .description('移除团队的定时任务')
   .action(async (teamId) => {
     try {
-      schedulerService.cancelJob(teamId);
+      schedulerService!.cancelJob(teamId);
       console.log(chalk.green(`✅ 已移除团队 ${teamId} 的定时任务`));
     } catch (error) {
       console.error(chalk.red('移除定时任务失败:'), (error as Error).message);

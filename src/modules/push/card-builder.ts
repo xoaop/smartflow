@@ -1,4 +1,4 @@
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { WeeklyReport } from '../../types';
 import { Logger } from '../../common/logger/logger';
 

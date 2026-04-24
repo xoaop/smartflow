@@ -1,4 +1,4 @@
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { CollectedData, TeamConfig, WeeklyReport } from '../../types';
 import { ClaudeClient } from '../../common/llm/claude-client';
 import { Logger } from '../../common/logger/logger';

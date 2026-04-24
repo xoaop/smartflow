@@ -23,7 +23,6 @@
   "dependencies": {
     "@larksuiteoapi/node-sdk": "^1.26.0",
     "@anthropic-ai/sdk": "^0.20.0",
-    "openclaw": "^1.0.0",
     "node-schedule": "^2.1.1",
     "better-sqlite3": "^9.4.3",
     "zod": "^3.22.4",

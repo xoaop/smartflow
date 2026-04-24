@@ -1,5 +1,5 @@
 import * as schedule from 'node-schedule';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { TeamConfigService } from '../config/team-config.service';
 import { FeishuCollectorService } from '../collector/feishu-collector.service';
 import { ReportGeneratorService } from '../generator/report-generator.service';
@@ -98,8 +98,9 @@ export class SchedulerService {
     }
 
     try {
-      // 验证cron表达式
-      if (!schedule.cancelJob(teamConfig.teamId) && !schedule.validateCronExpression(teamConfig.push.cronExpression)) {
+      // 简单验证cron表达式格式（node-schedule没有validateCronExpression方法）
+      const cronParts = teamConfig.push.cronExpression.trim().split(/\s+/);
+      if (cronParts.length < 5 || cronParts.length > 6) {
         logger.error('无效的cron表达式', {
           teamId: teamConfig.teamId,
           cron: teamConfig.push.cronExpression,
@@ -137,7 +138,7 @@ export class SchedulerService {
       logger.info('定时任务已创建', {
         teamId: teamConfig.teamId,
         cron: teamConfig.push.cronExpression,
-        nextRun: job.nextInvocation().toString(),
+        nextRun: job.nextInvocation()?.toString() || '未知',
       });
     } catch (error) {
       logger.error('创建定时任务失败', {

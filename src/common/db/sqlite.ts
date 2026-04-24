@@ -1,4 +1,4 @@
-import * as sqlite3 from 'better-sqlite3';
+import sqlite3 from 'better-sqlite3';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import { homedir } from 'os';

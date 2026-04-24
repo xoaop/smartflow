@@ -1,4 +1,4 @@
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { ISourceCollector } from './collector.interface';
 import { DocItem, TeamConfig, TimeRange } from '../../types';
 import { FeishuClient, FeishuClientFactory } from '../../common/feishu/client';
