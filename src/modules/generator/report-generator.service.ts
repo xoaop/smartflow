@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { CollectedData, TeamConfig, WeeklyReport } from '../../types';
-import { ClaudeClient } from '../../common/llm/claude-client';
+import { LLMClient } from '../../common/llm/llm-client';
 import { Logger } from '../../common/logger/logger';
 import {
   WEEKLY_REPORT_SYSTEM_PROMPT,
@@ -16,10 +16,10 @@ const logger = Logger.getInstance();
  * 周报生成服务
  */
 export class ReportGeneratorService {
-  private claudeClient: ClaudeClient;
+  private llmClient: LLMClient;
 
   constructor() {
-    this.claudeClient = ClaudeClient.getInstance();
+    this.llmClient = LLMClient.getInstance();
   }
 
   /**
@@ -43,7 +43,7 @@ export class ReportGeneratorService {
       const { systemPrompt, userPrompt } = this.buildPrompts(processedData, teamConfig);
 
       // 3. 调用大模型生成内容
-      const reportContent = await this.claudeClient.generateJson<WeeklyReport['content']>(
+      const reportContent = await this.llmClient.generateJson<WeeklyReport['content']>(
         userPrompt,
         systemPrompt,
         undefined,

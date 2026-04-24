@@ -11,19 +11,16 @@ import { Logger } from '../common/logger/logger';
 
 const logger = Logger.getInstance();
 const configService = TeamConfigService.getInstance();
-const collectorService = new FeishuCollectorService();
-// 懒加载服务，避免在配置加载前初始化
+
+// 懒加载服务，确保配置加载后再初始化
+let collectorService: FeishuCollectorService;
 let generatorService: ReportGeneratorService;
 let schedulerService: SchedulerService;
 
-// 初始化服务的函数，在配置加载后调用
 function initServices() {
-  if (!generatorService) {
-    generatorService = new ReportGeneratorService();
-  }
-  if (!schedulerService) {
-    schedulerService = SchedulerService.getInstance();
-  }
+  if (!collectorService) collectorService = new FeishuCollectorService();
+  if (!generatorService) generatorService = new ReportGeneratorService();
+  if (!schedulerService) schedulerService = SchedulerService.getInstance();
 }
 
 const program = new Command();
@@ -38,6 +35,9 @@ program
   .hook('preAction', async (thisCommand) => {
     // 加载全局配置
     const globalConfig = await configService.loadGlobalConfig();
+
+    // 初始化服务
+    initServices();
 
     // 设置日志级别
     if (thisCommand.opts().debug) {
@@ -391,6 +391,98 @@ scheduleCommand
       console.log(chalk.green(`✅ 已移除团队 ${teamId} 的定时任务`));
     } catch (error) {
       console.error(chalk.red('移除定时任务失败:'), (error as Error).message);
+      process.exit(1);
+    }
+  });
+
+// 演示命令
+program
+  .command('demo')
+  .description('演示功能：生成模拟周报，无需配置')
+  .option('-p, --push', '生成后推送到飞书（需要配置团队）')
+  .option('-o, --output <file>', '输出到文件')
+  .action(async (options) => {
+    try {
+      console.log(chalk.blue('🚀 开始演示：生成模拟团队周报'));
+      console.log(chalk.gray('正在生成模拟数据...'));
+
+      // 生成模拟采集数据
+      const mockData = await import('../modules/generator/mock-data');
+      const collectedData = mockData.generateMockData();
+
+      console.log(chalk.green(`✅ 模拟数据生成完成：`));
+      console.log(`   文档：${collectedData.docs.length} 篇`);
+      console.log(`   任务：${collectedData.tasks.length} 个`);
+      console.log(`   会议：${collectedData.meetings.length} 个`);
+
+      // 创建模拟团队配置
+      const mockTeamConfig: any = {
+        teamId: 'demo-team',
+        teamName: '演示团队',
+        generate: {
+          includeRisks: true,
+          includeNextWeekPlan: true,
+          detailLevel: 'medium',
+        }
+      };
+
+      // 生成周报
+      console.log(chalk.gray('\n📝 正在调用大模型生成周报内容...'));
+      const report = await generatorService.generate(collectedData, mockTeamConfig);
+
+      console.log(chalk.green('✅ 周报生成完成！'));
+      console.log('='.repeat(80));
+
+      // 展示周报内容
+      console.log(chalk.bold('\n📊 整体概览：'));
+      console.log(report.content.overview);
+
+      if (report.content.keyWork.length > 0) {
+        console.log(chalk.bold('\n✅ 本周重点工作：'));
+        report.content.keyWork.slice(0, 5).forEach((work, index) => {
+          console.log(`${index + 1}. ${chalk.bold(work.title)} (👤 ${work.author})`);
+          console.log(`   ${work.description}`);
+          if (work.sourceUrl) {
+            console.log(`   🔗 ${work.sourceUrl}`);
+          }
+          console.log();
+        });
+      }
+
+      if (report.content.riskWarnings.length > 0) {
+        console.log(chalk.bold('\n⚠️ 风险预警：'));
+        report.content.riskWarnings.forEach((risk, index) => {
+          const levelIcon = risk.level === 'high' ? '🔴' : risk.level === 'medium' ? '🟡' : '🟢';
+          console.log(`${index + 1}. ${levelIcon} ${risk.content}`);
+          if (risk.sourceUrl) {
+            console.log(`   🔗 ${risk.sourceUrl}`);
+          }
+        });
+      }
+
+      if (report.content.nextWeekPlan.length > 0) {
+        console.log(chalk.bold('\n📅 下周计划：'));
+        report.content.nextWeekPlan.forEach((plan, index) => {
+          console.log(`${index + 1}. ${plan.content} (👤 ${plan.responsible})`);
+        });
+      }
+
+      console.log('\n' + '='.repeat(80));
+
+      // 输出到文件
+      if (options.output) {
+        const fs = await import('fs-extra');
+        await fs.writeJson(options.output, report, { spaces: 2 });
+        console.log(chalk.green(`\n💾 周报已保存到文件: ${options.output}`));
+      }
+
+      // 推送
+      if (options.push) {
+        console.log(chalk.yellow('\n⚠️ 推送功能需要先配置飞书团队信息'));
+      }
+
+    } catch (error) {
+      console.error(chalk.red('❌ 演示失败:'), (error as Error).message);
       process.exit(1);
     }
   });

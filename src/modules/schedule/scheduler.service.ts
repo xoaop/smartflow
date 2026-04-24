@@ -98,14 +98,21 @@ export class SchedulerService {
     }
 
     try {
-      // 简单验证cron表达式格式（node-schedule没有validateCronExpression方法）
-      const cronParts = teamConfig.push.cronExpression.trim().split(/\s+/);
-      if (cronParts.length < 5 || cronParts.length > 6) {
-        logger.error('无效的cron表达式', {
-          teamId: teamConfig.teamId,
-          cron: teamConfig.push.cronExpression,
-        });
-        return;
+      // 验证cron表达式
+      if (!schedule.cancelJob(teamConfig.teamId)) {
+        try {
+          // 尝试解析cron表达式来验证
+          const testJob = schedule.scheduleJob(teamConfig.push.cronExpression, () => {});
+          if (testJob) {
+            testJob.cancel();
+          }
+        } catch (error) {
+          logger.error('无效的cron表达式', {
+            teamId: teamConfig.teamId,
+            cron: teamConfig.push.cronExpression,
+          });
+          return;
+        }
       }
 
       // 创建任务
@@ -135,10 +142,11 @@ export class SchedulerService {
       // 保存到数据库
       this.upsertScheduledTask(teamConfig);
 
+      const nextRun = job.nextInvocation();
       logger.info('定时任务已创建', {
         teamId: teamConfig.teamId,
         cron: teamConfig.push.cronExpression,
-        nextRun: job.nextInvocation()?.toString() || '未知',
+        nextRun: nextRun ? nextRun.toString() : '未知',
       });
     } catch (error) {
       logger.error('创建定时任务失败', {

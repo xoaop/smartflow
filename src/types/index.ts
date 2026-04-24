@@ -7,6 +7,43 @@ export interface TimeRange {
 }
 
 /**
+ * 大模型配置
+ */
+export type LLMProvider = 'claude' | 'openai' | 'qwen' | 'ernie' | 'doubao';
+
+export interface BaseLLMConfig {
+  provider: LLMProvider;
+  apiKey: string;
+  baseUrl?: string;
+  model: string;
+  maxTokens?: number;
+}
+
+export interface ClaudeConfig extends BaseLLMConfig {
+  provider: 'claude';
+}
+
+export interface OpenAIConfig extends BaseLLMConfig {
+  provider: 'openai';
+  organization?: string;
+}
+
+export interface QwenConfig extends BaseLLMConfig {
+  provider: 'qwen';
+}
+
+export interface ErnieConfig extends BaseLLMConfig {
+  provider: 'ernie';
+  secretKey?: string;
+}
+
+export interface DoubaoConfig extends BaseLLMConfig {
+  provider: 'doubao';
+}
+
+export type LLMConfig = ClaudeConfig | OpenAIConfig | QwenConfig | ErnieConfig | DoubaoConfig;
+
+/**
  * 团队配置
  */
 export interface TeamConfig {

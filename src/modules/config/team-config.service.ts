@@ -48,6 +48,7 @@ export class TeamConfigService {
         logLevel: 'info',
         dataDir: path.join(homedir(), '.smartflow', 'data'),
         llm: {
+          provider: 'claude',
           model: 'claude-3-5-sonnet-20240620',
         },
       };

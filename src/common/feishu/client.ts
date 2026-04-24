@@ -47,12 +47,12 @@ export class FeishuClient {
         throw new Error('获取飞书租户Token失败：响应数据为空');
       }
 
-      const tokenData = response.data as { tenant_access_token: string; expire: number };
-      this.tenantAccessToken = tokenData.tenant_access_token;
-      this.tokenExpireTime = now + tokenData.expire * 1000;
+      const data = response.data as { tenant_access_token: string; expire: number };
+      this.tenantAccessToken = data.tenant_access_token;
+      this.tokenExpireTime = now + data.expire * 1000;
       logger.debug('飞书租户Token获取成功', {
         teamId: this.teamConfig.teamId,
-        expireIn: tokenData.expire
+        expireIn: data.expire
       });
 
       if (!this.tenantAccessToken) {

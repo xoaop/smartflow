@@ -62,10 +62,47 @@ export const GlobalConfigSchema = z.object({
   defaultTeamId: z.string().optional(),
   logLevel: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   dataDir: z.string().default('~/.smartflow/data'),
-  llm: z.object({
-    apiKey: z.string().optional(),
-    baseUrl: z.string().optional(),
-    model: z.string().default('claude-3-5-sonnet-20240620'),
+  llm: z.discriminatedUnion('provider', [
+    z.object({
+      provider: z.literal('claude').default('claude'),
+      apiKey: z.string().optional(),
+      baseUrl: z.string().optional(),
+      model: z.string().default('claude-3-5-sonnet-20240620'),
+      maxTokens: z.number().optional(),
+    }),
+    z.object({
+      provider: z.literal('openai'),
+      apiKey: z.string().optional(),
+      baseUrl: z.string().optional(),
+      model: z.string().default('gpt-4o'),
+      maxTokens: z.number().optional(),
+      organization: z.string().optional(),
+    }),
+    z.object({
+      provider: z.literal('qwen'), // 通义千问
+      apiKey: z.string().optional(),
+      baseUrl: z.string().optional(),
+      model: z.string().default('qwen-max'),
+      maxTokens: z.number().optional(),
+    }),
+    z.object({
+      provider: z.literal('ernie'), // 文心一言
+      apiKey: z.string().optional(),
+      baseUrl: z.string().optional(),
+      model: z.string().default('ernie-4.0'),
+      maxTokens: z.number().optional(),
+      secretKey: z.string().optional(),
+    }),
+    z.object({
+      provider: z.literal('doubao'), // 豆包
+      apiKey: z.string().optional(),
+      baseUrl: z.string().optional(),
+      model: z.string().default('doubao-pro'),
+      maxTokens: z.number().optional(),
+    }),
+  ]).default({
+    provider: 'claude',
+    model: 'claude-3-5-sonnet-20240620',
   }),
 });
 

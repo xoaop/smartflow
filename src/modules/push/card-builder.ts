@@ -168,10 +168,10 @@ export class FeishuCardBuilder {
         },
         type: 'default',
         multi_url: {
-          url: 'https://github.com/your-repo/smartflow', // TODO: 替换为实际的详情页链接
-          pc_url: 'https://github.com/your-repo/smartflow',
-          android_url: 'https://github.com/your-repo/smartflow',
-          ios_url: 'https://github.com/your-repo/smartflow',
+          url: 'https://github.com/xoaop/smartflow',
+          pc_url: 'https://github.com/xoaop/smartflow',
+          android_url: 'https://github.com/xoaop/smartflow',
+          ios_url: 'https://github.com/xoaop/smartflow',
         },
       },
     ];
