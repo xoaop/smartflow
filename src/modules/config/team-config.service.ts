@@ -47,6 +47,10 @@ export class TeamConfigService {
       const defaultConfig: GlobalConfig = {
         logLevel: 'info',
         dataDir: path.join(homedir(), '.smartflow', 'data'),
+        feishu: {
+          eventVerificationToken: '',
+          encryptKey: '',
+        },
         llm: {
           provider: 'claude',
           model: 'claude-3-5-sonnet-20240620',

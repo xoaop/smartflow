@@ -64,6 +64,10 @@ export class SQLiteDatabase {
         content_json TEXT NOT NULL,
         sources_json TEXT,
         generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        audit_status VARCHAR(50) DEFAULT 'pending', -- pending, approved, rejected
+        auditor_id VARCHAR(255),
+        audit_time DATETIME,
+        audit_comment TEXT,
         UNIQUE(team_id, time_range_start, time_range_end)
       )
     `);
@@ -96,7 +100,32 @@ export class SQLiteDatabase {
       )
     `);
 
-    logger.debug('数据库表初始化完成');
+    // 数据库迁移：添加审核相关字段（如果不存在）
+    this.migrateDatabase();
+  }
+
+  /**
+   * 数据库迁移
+   */
+  private migrateDatabase(): void {
+    try {
+      // 检查reports表是否有audit_status字段
+      const columns = this.db.prepare("PRAGMA table_info(reports)").all() as any[];
+      const hasAuditStatus = columns.some(col => col.name === 'audit_status');
+
+      if (!hasAuditStatus) {
+        logger.info('执行数据库迁移：添加审核相关字段');
+        this.db.exec(`
+          ALTER TABLE reports ADD COLUMN audit_status VARCHAR(50) DEFAULT 'pending';
+          ALTER TABLE reports ADD COLUMN auditor_id VARCHAR(255);
+          ALTER TABLE reports ADD COLUMN audit_time DATETIME;
+          ALTER TABLE reports ADD COLUMN audit_comment TEXT;
+        `);
+        logger.info('数据库迁移完成');
+      }
+    } catch (error) {
+      logger.error('数据库迁移失败', { error: (error as Error).message });
+    }
   }
 
   /**

@@ -62,6 +62,11 @@ export const GlobalConfigSchema = z.object({
   defaultTeamId: z.string().optional(),
   logLevel: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   dataDir: z.string().default('~/.smartflow/data'),
+  // 飞书全局配置
+  feishu: z.object({
+    eventVerificationToken: z.string().optional(),
+    encryptKey: z.string().optional(),
+  }).optional(),
   llm: z.discriminatedUnion('provider', [
     z.object({
       provider: z.literal('claude').default('claude'),

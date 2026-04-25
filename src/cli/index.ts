@@ -7,6 +7,8 @@ import { FeishuCollectorService } from '../modules/collector/feishu-collector.se
 import { ReportGeneratorService } from '../modules/generator/report-generator.service';
 import { FeishuPushService } from '../modules/push/feishu-push.service';
 import { SchedulerService } from '../modules/schedule/scheduler.service';
+import { FeishuEventService } from '../common/feishu/event-service';
+import { SQLiteDatabase } from '../common/db/sqlite';
 import { Logger } from '../common/logger/logger';
 
 const logger = Logger.getInstance();
@@ -16,11 +18,13 @@ const configService = TeamConfigService.getInstance();
 let collectorService: FeishuCollectorService;
 let generatorService: ReportGeneratorService;
 let schedulerService: SchedulerService;
+let eventService: FeishuEventService;
 
 function initServices() {
   if (!collectorService) collectorService = new FeishuCollectorService();
   if (!generatorService) generatorService = new ReportGeneratorService();
   if (!schedulerService) schedulerService = SchedulerService.getInstance();
+  if (!eventService) eventService = FeishuEventService.getInstance();
 }
 
 const program = new Command();
@@ -154,6 +158,21 @@ generateCommand
       console.log(chalk.gray('2/3 正在生成周报内容...'));
       const report = await generatorService!.generate(collectedData, teamConfig);
       console.log(chalk.green('   周报生成完成'));
+
+      // 保存到数据库
+      const db = SQLiteDatabase.getInstance();
+      const reportId = db.run(
+        `INSERT INTO reports (team_id, time_range_start, time_range_end, content_json, sources_json)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          report.teamId,
+          report.timeRange.start.toISOString(),
+          report.timeRange.end.toISOString(),
+          JSON.stringify(report.content),
+          JSON.stringify(report.sources),
+        ]
+      ).lastInsertRowid as number;
+      report.id = reportId;
 
       // 3. 输出或推送
       if (options.output) {
@@ -483,6 +502,37 @@ program
 
     } catch (error) {
       console.error(chalk.red('❌ 演示失败:'), (error as Error).message);
+      process.exit(1);
+    }
+  });
+
+// 服务相关命令
+const serverCommand = program.command('server')
+  .description('服务管理');
+
+serverCommand
+  .command('start')
+  .description('启动飞书事件回调服务')
+  .option('-p, --port <port>', '监听端口', '3000')
+  .option('-h, --host <host>', '监听地址', '0.0.0.0')
+  .action(async (options) => {
+    try {
+      console.log(chalk.blue(`启动飞书事件回调服务，监听 ${options.host}:${options.port}...`));
+      eventService!.start(parseInt(options.port), options.host);
+
+      // 保持进程运行
+      process.stdin.resume();
+
+      // 处理退出信号
+      process.on('SIGINT', () => {
+        console.log(chalk.yellow('\n正在停止服务...'));
+        eventService!.stop();
+        console.log(chalk.green('✅ 服务已停止'));
+        process.exit(0);
+      });
+
+    } catch (error) {
+      console.error(chalk.red('启动服务失败:'), (error as Error).message);
       process.exit(1);
     }
   });

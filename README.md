@@ -9,6 +9,7 @@ SmartFlow 是一个自动化的团队效能周报生成系统，基于飞书Open
 - **多周期支持**：支持周/双周/月度等多种生成周期
 - **多团队隔离**：支持多个团队独立配置，数据完全隔离
 - **定时自动推送**：灵活的定时任务配置，到点自动推送飞书卡片
+- **审核流程支持**：支持周报审核机制，审核通过后再推送
 - **智能风险识别**：自动识别任务延期、决议未跟进等潜在风险
 - **来源溯源**：所有内容都标注原始来源链接，支持点击跳转
 
@@ -42,9 +43,50 @@ smartflow health
 5. 手动生成周报：`smartflow generate run --team my-team --range lastweek --push`
 6. 启动定时任务：`smartflow schedule start`
 
+### 审核功能配置
+如果需要启用周报审核流程：
+
+1. 在团队配置中开启审核：
+```yaml
+push:
+  needAudit: true
+  auditorId: "飞书用户ID"  # 审核人的飞书用户ID
+  channels:
+    - type: group
+      id: "飞书群ID"       # 审核通过后推送的群聊
+```
+
+2. 启动事件回调服务：
+```bash
+smartflow server start --port 3000
+```
+
+3. 在飞书开放平台配置事件订阅：
+   - 请求URL：`http(s)://你的服务器地址/webhook/feishu/event`
+   - 订阅事件：`卡片按钮回传事件（card.action.trigger）`
+   - 将飞书提供的 `Verification Token` 配置到全局配置的 `feishu.eventVerificationToken` 字段
+
 ## 📖 详细文档
 - [使用手册](docs/使用手册.md) - 完整的使用说明和配置指南
 - [配置模板](config/) - 配置文件示例
+
+## 🎯 CLI命令说明
+
+### 基础命令
+```bash
+smartflow health                    # 健康检查
+smartflow config list               # 列出所有团队配置
+smartflow config create <teamId> <teamName>  # 创建团队配置
+smartflow generate run --team <teamId> --range lastweek  # 生成周报
+smartflow push test <teamId>        # 测试推送功能
+smartflow schedule start            # 启动定时任务
+```
+
+### 审核相关命令
+```bash
+smartflow server start              # 启动飞书事件回调服务
+smartflow server start --port 8080  # 指定端口启动
+```
 
 ## 📦 项目结构
 ```

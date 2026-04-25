@@ -178,6 +178,7 @@ export interface CollectedData {
  * 生成的周报内容
  */
 export interface WeeklyReport {
+  id?: number; // 数据库ID，保存后才存在
   teamId: string;
   timeRange: TimeRange;
   generatedAt: Date;
@@ -230,4 +231,43 @@ export interface PushResult {
     error?: string;
   }>;
   pushedAt?: Date;
+}
+
+/**
+ * 审核状态
+ */
+export type AuditStatus = 'pending' | 'approved' | 'rejected';
+
+/**
+ * 飞书卡片动作回调事件
+ */
+export interface FeishuCardActionEvent {
+  open_id: string;
+  user_id: string;
+  open_message_id: string;
+  open_chat_id?: string;
+  tenant_key: string;
+  token: string;
+  action: {
+    value: Record<string, any>;
+    tag: string;
+  };
+  host?: string;
+  context?: Record<string, any>;
+}
+
+/**
+ * 飞书事件回调基础结构
+ */
+export interface FeishuEventCallback<T = any> {
+  schema: string;
+  header: {
+    event_id: string;
+    token: string;
+    create_time: string;
+    event_type: string;
+    tenant_key: string;
+    app_id: string;
+  };
+  event: T;
 }
