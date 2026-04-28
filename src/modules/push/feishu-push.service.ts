@@ -9,12 +9,21 @@ const logger = Logger.getInstance();
  * 飞书推送服务
  */
 export class FeishuPushService {
-  private feishuClient: FeishuClient;
+  private feishuClient: FeishuClient | null = null;
   private teamConfig: TeamConfig;
 
   constructor(teamConfig: TeamConfig) {
     this.teamConfig = teamConfig;
-    this.feishuClient = FeishuClientFactory.getClient(teamConfig);
+  }
+
+  /**
+   * 初始化飞书客户端
+   */
+  private async initClient(): Promise<FeishuClient> {
+    if (!this.feishuClient) {
+      this.feishuClient = await FeishuClientFactory.getClient(this.teamConfig);
+    }
+    return this.feishuClient;
   }
 
   /**
@@ -29,6 +38,9 @@ export class FeishuPushService {
         results: [],
       };
     }
+
+    // 初始化客户端
+    const client = await this.initClient();
 
     if (this.teamConfig.push.channels.length === 0) {
       logger.warn('未配置推送渠道，跳过推送', { teamId: this.teamConfig.teamId });
@@ -167,7 +179,8 @@ export class FeishuPushService {
    * 推送到群聊
    */
   private async pushToGroup(chatId: string, card: any): Promise<string> {
-    const response: any = await this.feishuClient.request('POST', '/im/v1/messages', {
+    const client = await this.initClient();
+    const response: any = await client.request('POST', '/im/v1/messages', {
       params: {
         receive_id_type: 'chat_id',
       },
@@ -214,7 +227,8 @@ export class FeishuPushService {
       );
     }
 
-    const response: any = await this.feishuClient.request('POST', '/im/v1/messages', {
+    const client = await this.initClient();
+    const response: any = await client.request('POST', '/im/v1/messages', {
       params: {
         receive_id_type: 'user_id',
       },

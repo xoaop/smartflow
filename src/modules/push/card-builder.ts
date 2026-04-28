@@ -30,6 +30,86 @@ export class FeishuCardBuilder {
     // 卡片内容元素
     const elements: any[] = [];
 
+    // 数据统计面板
+    const docCount = report.sources.filter(s => s.type === 'doc').length;
+    const taskCount = report.sources.filter(s => s.type === 'task').length;
+    const meetingCount = report.sources.filter(s => s.type === 'meeting').length;
+    const messageCount = report.sources.filter(s => s.type === 'message').length;
+    const riskCount = report.content.riskWarnings.length;
+
+    elements.push({
+      tag: 'column_set',
+      columns: [
+        {
+          tag: 'column',
+          width: 'weighted',
+          weight: 1,
+          vertical_align: 'middle',
+          elements: [
+            {
+              tag: 'markdown',
+              content: `**📄 文档**\n${docCount} 篇更新`,
+              text_align: 'center'
+            }
+          ]
+        },
+        {
+          tag: 'column',
+          width: 'weighted',
+          weight: 1,
+          vertical_align: 'middle',
+          elements: [
+            {
+              tag: 'markdown',
+              content: `**✅ 任务**\n${taskCount} 项变更`,
+              text_align: 'center'
+            }
+          ]
+        },
+        {
+          tag: 'column',
+          width: 'weighted',
+          weight: 1,
+          vertical_align: 'middle',
+          elements: [
+            {
+              tag: 'markdown',
+              content: `**🎙️ 会议**\n${meetingCount} 场纪要`,
+              text_align: 'center'
+            }
+          ]
+        },
+        {
+          tag: 'column',
+          width: 'weighted',
+          weight: 1,
+          vertical_align: 'middle',
+          elements: [
+            {
+              tag: 'markdown',
+              content: `**💬 消息**\n${messageCount} 条讨论`,
+              text_align: 'center'
+            }
+          ]
+        },
+        {
+          tag: 'column',
+          width: 'weighted',
+          weight: 1,
+          vertical_align: 'middle',
+          elements: [
+            {
+              tag: 'markdown',
+              content: `**⚠️ 风险**\n${riskCount} 个预警`,
+              text_align: 'center'
+            }
+          ]
+        }
+      ]
+    });
+
+    elements.push({ tag: 'hr' });
+
     // 整体概览
     elements.push({
       tag: 'markdown',
@@ -42,20 +122,22 @@ export class FeishuCardBuilder {
     if (report.content.keyWork.length > 0) {
       elements.push({
         tag: 'markdown',
-        content: '**✅ 本周重点工作**',
+        content: `**✅ 本周重点工作 (${report.content.keyWork.length} 项)**`,
       });
 
-      report.content.keyWork.slice(0, 10).forEach((work, index) => {
+      // 只展示最重要的5项，提升信息密度
+      const displayCount = Math.min(5, report.content.keyWork.length);
+      report.content.keyWork.slice(0, displayCount).forEach((work, index) => {
         elements.push({
           tag: 'markdown',
-          content: `${index + 1}. **[${work.title}](${work.sourceUrl})**\n   ${work.description}\n   👤 负责人：${work.author}`,
+          content: `${index + 1}. **[${work.title}](${work.sourceUrl})** | 👤 ${work.author}\n   ${work.description.substring(0, 100)}${work.description.length > 100 ? '...' : ''}`,
         });
       });
 
-      if (report.content.keyWork.length > 10) {
+      if (report.content.keyWork.length > displayCount) {
         elements.push({
           tag: 'markdown',
-          content: `*还有 ${report.content.keyWork.length - 10} 项工作未展示，查看详情可点击来源链接*`,
+          content: `*... 还有 ${report.content.keyWork.length - displayCount} 项工作，点击标题链接查看详情*`,
         });
       }
 
@@ -66,23 +148,31 @@ export class FeishuCardBuilder {
     if (report.content.projectProgress.length > 0) {
       elements.push({
         tag: 'markdown',
-        content: '**🚀 项目进展**',
+        content: `**🚀 项目进展 (${report.content.projectProgress.length} 个)**`,
       });
 
       report.content.projectProgress.forEach((project) => {
+        // 计算项目健康度
+        const totalTasks = project.tasks.length;
+        const completedTasks = project.tasks.filter(t => t.status === 'done' || t.status === '已完成').length;
+        const progressRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+        // 进度条样式
+        const progressBar = '█'.repeat(Math.floor(progressRate / 10)) + '░'.repeat(10 - Math.floor(progressRate / 10));
+
         elements.push({
           tag: 'markdown',
-          content: `**${project.projectName}**\n${project.progress}`,
+          content: `**${project.projectName}** | ${progressBar} ${progressRate}%\n${project.progress.substring(0, 80)}${project.progress.length > 80 ? '...' : ''}`,
         });
 
         if (project.tasks.length > 0) {
-          const taskList = project.tasks.slice(0, 3).map(task =>
-            `- [${task.title}](${task.url}) (${task.status})`
-          ).join('\n');
+          const taskList = project.tasks.slice(0, 2).map(task =>
+            `- [${task.title.substring(0, 20)}${task.title.length > 20 ? '...' : ''}](${task.url}) ${task.status === 'done' ? '✅' : task.status === 'in_progress' ? '🚀' : '⏳'}`
+          ).join(' ');
 
           elements.push({
             tag: 'markdown',
-            content: `相关任务：\n${taskList}`,
+            content: `*相关任务：* ${taskList}${project.tasks.length > 2 ? ` ... 等 ${project.tasks.length} 项` : ''}`,
           });
         }
       });
@@ -94,28 +184,51 @@ export class FeishuCardBuilder {
     if (report.content.pendingItems.length > 0) {
       elements.push({
         tag: 'markdown',
-        content: '**⏳ 待跟进事项**',
+        content: `**⏳ 待跟进事项 (${report.content.pendingItems.length} 项)**`,
       });
 
-      report.content.pendingItems.forEach((item, index) => {
-        const deadline = item.deadline ? `⏰ 截止时间：${dayjs(item.deadline).format('YYYY-MM-DD')}` : '';
+      // 只展示前5项
+      report.content.pendingItems.slice(0, 5).forEach((item, index) => {
+        const deadline = item.deadline ? ` ⏰ ${dayjs(item.deadline).format('MM-DD')}` : '';
         elements.push({
           tag: 'markdown',
-          content: `${index + 1}. **[${item.content}](${item.sourceUrl})**\n   👤 负责人：${item.assignee} ${deadline}`,
+          content: `${index + 1}. **[${item.content.substring(0, 50)}${item.content.length > 50 ? '...' : ''}](${item.sourceUrl})** | 👤 ${item.assignee}${deadline}`,
         });
       });
+
+      if (report.content.pendingItems.length > 5) {
+        elements.push({
+          tag: 'markdown',
+          content: `*... 还有 ${report.content.pendingItems.length - 5} 项待跟进*`,
+        });
+      }
 
       elements.push({ tag: 'hr' });
     }
 
     // 风险预警
     if (report.content.riskWarnings.length > 0) {
+      const highRiskCount = report.content.riskWarnings.filter(r => r.level === 'high').length;
+      const mediumRiskCount = report.content.riskWarnings.filter(r => r.level === 'medium').length;
+      const lowRiskCount = report.content.riskWarnings.filter(r => r.level === 'low').length;
+
+      let riskTitle = '**⚠️ 风险预警**';
+      if (highRiskCount > 0) {
+        riskTitle = `**🔴 风险预警 (高风险 ${highRiskCount} 个，中风险 ${mediumRiskCount} 个，低风险 ${lowRiskCount} 个)**`;
+      }
+
       elements.push({
         tag: 'markdown',
-        content: '**⚠️ 风险预警**',
+        content: riskTitle,
       });
 
-      report.content.riskWarnings.forEach((risk, index) => {
+      // 先展示高风险，再展示中风险，最后低风险
+      const sortedRisks = [...report.content.riskWarnings].sort((a, b) => {
+        const levelOrder = { high: 0, medium: 1, low: 2 };
+        return levelOrder[a.level] - levelOrder[b.level];
+      });
+
+      sortedRisks.forEach((risk, index) => {
         const levelMap = {
           low: '🟢 低风险',
           medium: '🟡 中风险',
@@ -134,15 +247,22 @@ export class FeishuCardBuilder {
     if (report.content.nextWeekPlan.length > 0) {
       elements.push({
         tag: 'markdown',
-        content: '**📅 下周计划**',
+        content: `**📅 下周计划 (${report.content.nextWeekPlan.length} 项)**`,
       });
 
-      report.content.nextWeekPlan.forEach((plan, index) => {
+      report.content.nextWeekPlan.slice(0, 5).forEach((plan, index) => {
         elements.push({
           tag: 'markdown',
-          content: `${index + 1}. ${plan.content}\n   👤 负责人：${plan.responsible}`,
+          content: `${index + 1}. ${plan.content.substring(0, 60)}${plan.content.length > 60 ? '...' : ''} | 👤 ${plan.responsible}`,
         });
       });
+
+      if (report.content.nextWeekPlan.length > 5) {
+        elements.push({
+          tag: 'markdown',
+          content: `*... 还有 ${report.content.nextWeekPlan.length - 5} 项计划*`,
+        });
+      }
 
       elements.push({ tag: 'hr' });
     }
@@ -153,7 +273,7 @@ export class FeishuCardBuilder {
       elements: [
         {
           tag: 'plain_text',
-          content: `🤖 本报告由 SmartFlow 自动生成于 ${generateTime} | 所有内容均来自飞书原始数据`,
+          content: `🤖 SmartFlow 自动生成 | ${generateTime} | 内容100%来自飞书原始数据`,
         },
       ],
     });
@@ -164,14 +284,42 @@ export class FeishuCardBuilder {
         tag: 'button',
         text: {
           tag: 'plain_text',
-          content: '查看所有来源',
+          content: '📋 查看全部',
         },
-        type: 'default',
+        type: 'primary',
         multi_url: {
           url: 'https://github.com/xoaop/smartflow',
           pc_url: 'https://github.com/xoaop/smartflow',
           android_url: 'https://github.com/xoaop/smartflow',
           ios_url: 'https://github.com/xoaop/smartflow',
+        },
+      },
+      {
+        tag: 'button',
+        text: {
+          tag: 'plain_text',
+          content: '➕ 创建任务',
+        },
+        type: 'default',
+        multi_url: {
+          url: 'https://applink.feishu.cn/client/task/create',
+          pc_url: 'https://applink.feishu.cn/client/task/create',
+          android_url: 'https://applink.feishu.cn/client/task/create',
+          ios_url: 'https://applink.feishu.cn/client/task/create',
+        },
+      },
+      {
+        tag: 'button',
+        text: {
+          tag: 'plain_text',
+          content: '⚙️ 配置',
+        },
+        type: 'default',
+        multi_url: {
+          url: 'https://github.com/xoaop/smartflow#config',
+          pc_url: 'https://github.com/xoaop/smartflow#config',
+          android_url: 'https://github.com/xoaop/smartflow#config',
+          ios_url: 'https://github.com/xoaop/smartflow#config',
         },
       },
     ];
