@@ -10,11 +10,9 @@ const logger = Logger.getInstance();
  * 飞书会议采集器
  */
 export class MeetingCollector implements ISourceCollector<MeetingItem> {
-  private feishuClient: FeishuClient;
+  private feishuClient: FeishuClient | null = null;
 
-  constructor(teamConfig: TeamConfig) {
-    this.feishuClient = FeishuClientFactory.getClient(teamConfig);
-  }
+  constructor() {}
 
   /**
    * 采集指定时间范围内的会议和纪要
@@ -23,6 +21,11 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
     if (!teamConfig.dataSources.meetings.enabled) {
       logger.info('会议采集未启用，跳过', { teamId: teamConfig.teamId });
       return [];
+    }
+
+    // 初始化飞书客户端
+    if (!this.feishuClient) {
+      this.feishuClient = await FeishuClientFactory.getClient(teamConfig);
     }
 
     if (teamConfig.dataSources.meetings.calendarIds.length === 0) {
@@ -65,7 +68,7 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
     let pageToken = '';
 
     do {
-      const response: any = await this.feishuClient.request('GET', `/calendar/v4/calendars/${calendarId}/events`, {
+      const response: any = await this.feishuClient!.request('GET', `/calendar/v4/calendars/${calendarId}/events`, {
         params: {
           start_time: Math.floor(timeRange.start.getTime() / 1000),
           end_time: Math.floor(timeRange.end.getTime() / 1000),
@@ -128,7 +131,7 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
   }> {
     try {
       // 尝试获取会议关联的纪要
-      const response: any = await this.feishuClient.request('GET', `/vc/v1/meetings`, {
+      const response: any = await this.feishuClient!.request('GET', `/vc/v1/meetings`, {
         params: {
           calendar_event_id: eventId,
         },
@@ -148,7 +151,7 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
           // 从妙记URL中提取妙记ID
           const minutesId = this.extractMinutesId(meeting.minutes_url);
           if (minutesId) {
-            const minutesResponse: any = await this.feishuClient.request('GET', `/minutes/v1/minutes/${minutesId}`);
+            const minutesResponse: any = await this.feishuClient!.request('GET', `/minutes/v1/minutes/${minutesId}`);
             minutesContent = minutesResponse.minutes?.content || '';
 
             // 提取Action Items

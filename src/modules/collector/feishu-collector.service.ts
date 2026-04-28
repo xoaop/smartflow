@@ -2,6 +2,7 @@ import { IDataCollector } from './collector.interface';
 import { DocCollector } from './doc-collector';
 import { TaskCollector } from './task-collector';
 import { MeetingCollector } from './meeting-collector';
+import { MessageCollector } from './message-collector';
 import { CollectedData, TeamConfig, TimeRange } from '../../types';
 import { Logger } from '../../common/logger/logger';
 import dayjs from 'dayjs';
@@ -26,11 +27,12 @@ export class FeishuCollectorService implements IDataCollector {
     const startTime = Date.now();
 
     try {
-      // 并行采集三类数据
-      const [docs, tasks, meetings] = await Promise.all([
+      // 并行采集四类数据
+      const [docs, tasks, meetings, messages] = await Promise.all([
         this.collectDocs(teamConfig, timeRange),
         this.collectTasks(teamConfig, timeRange),
         this.collectMeetings(teamConfig, timeRange),
+        this.collectMessages(teamConfig, timeRange),
       ]);
 
       const collectedData: CollectedData = {
@@ -40,6 +42,7 @@ export class FeishuCollectorService implements IDataCollector {
         docs,
         tasks,
         meetings,
+        messages,
       };
 
       const costTime = Date.now() - startTime;
@@ -49,6 +52,7 @@ export class FeishuCollectorService implements IDataCollector {
         docCount: docs.length,
         taskCount: tasks.length,
         meetingCount: meetings.length,
+        messageCount: messages.length,
       });
 
       return collectedData;
@@ -68,7 +72,7 @@ export class FeishuCollectorService implements IDataCollector {
    */
   private async collectDocs(teamConfig: TeamConfig, timeRange: TimeRange) {
     try {
-      const docCollector = new DocCollector(teamConfig);
+      const docCollector = new DocCollector();
       return await docCollector.collect(teamConfig, timeRange);
     } catch (error) {
       logger.error('文档采集失败，跳过该数据源', {
@@ -84,7 +88,7 @@ export class FeishuCollectorService implements IDataCollector {
    */
   private async collectTasks(teamConfig: TeamConfig, timeRange: TimeRange) {
     try {
-      const taskCollector = new TaskCollector(teamConfig);
+      const taskCollector = new TaskCollector();
       return await taskCollector.collect(teamConfig, timeRange);
     } catch (error) {
       logger.error('任务采集失败，跳过该数据源', {
@@ -100,10 +104,26 @@ export class FeishuCollectorService implements IDataCollector {
    */
   private async collectMeetings(teamConfig: TeamConfig, timeRange: TimeRange) {
     try {
-      const meetingCollector = new MeetingCollector(teamConfig);
+      const meetingCollector = new MeetingCollector();
       return await meetingCollector.collect(teamConfig, timeRange);
     } catch (error) {
       logger.error('会议采集失败，跳过该数据源', {
+        teamId: teamConfig.teamId,
+        error: (error as Error).message,
+      });
+      return [];
+    }
+  }
+
+  /**
+   * 采集群聊消息数据
+   */
+  private async collectMessages(teamConfig: TeamConfig, timeRange: TimeRange) {
+    try {
+      const messageCollector = new MessageCollector();
+      return await messageCollector.collect(teamConfig, timeRange);
+    } catch (error) {
+      logger.error('群聊消息采集失败，跳过该数据源', {
         teamId: teamConfig.teamId,
         error: (error as Error).message,
       });

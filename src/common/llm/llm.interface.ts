@@ -33,51 +33,11 @@ export interface LLMClient {
 }
 
 /**
- * 大模型配置基类
+ * 大模型配置（OpenClaw统一管理，此处仅为类型定义）
  */
-export interface LLMConfig {
-  provider: 'claude' | 'openai' | 'qwen' | 'ernie' | 'doubao';
-  apiKey: string;
-  baseUrl?: string;
-  model: string;
+export interface AnyLLMConfig {
+  model?: string;
   maxTokens?: number;
+  temperature?: number;
+  [key: string]: any;
 }
-
-/**
- * Claude 配置
- */
-export interface ClaudeConfig extends LLMConfig {
-  provider: 'claude';
-}
-
-/**
- * OpenAI 配置
- */
-export interface OpenAIConfig extends LLMConfig {
-  provider: 'openai';
-  organization?: string;
-}
-
-/**
- * 通义千问 配置
- */
-export interface QwenConfig extends LLMConfig {
-  provider: 'qwen';
-}
-
-/**
- * 文心一言 配置
- */
-export interface ErnieConfig extends LLMConfig {
-  provider: 'ernie';
-  secretKey?: string;
-}
-
-/**
- * 豆包 配置
- */
-export interface DoubaoConfig extends LLMConfig {
-  provider: 'doubao';
-}
-
-export type AnyLLMConfig = ClaudeConfig | OpenAIConfig | QwenConfig | ErnieConfig | DoubaoConfig;

@@ -1,75 +1,47 @@
-import * as lark from '@larksuiteoapi/node-sdk';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { TeamConfig } from '../../../src/types';
 import { Logger } from '../logger/logger';
+import { TeamConfigService } from '../../modules/config/team-config.service';
 
+const execAsync = promisify(exec);
 const logger = Logger.getInstance();
 
 /**
  * 飞书API客户端封装
+ * 仅支持CLI模式，调用官方飞书CLI执行API请求
  */
 export class FeishuClient {
-  private client: lark.Client;
-  private teamConfig: TeamConfig;
-  private tenantAccessToken: string | null = null;
-  private tokenExpireTime: number = 0;
+  private cliProfile: string;
+  private teamId: string;
+  private appId: string;
+  private appSecret: string;
+  private scopes: string[];
 
-  constructor(teamConfig: TeamConfig) {
-    this.teamConfig = teamConfig;
-    this.client = new lark.Client({
-      appId: teamConfig.feishu.appId,
-      appSecret: teamConfig.feishu.appSecret,
-      disableTokenCache: true, // 我们自己管理token缓存
-    });
+  constructor(options: {
+    profile: string;
+    teamId: string;
+    appId: string;
+    appSecret: string;
+    scopes?: string[];
+  }) {
+    this.cliProfile = options.profile;
+    this.teamId = options.teamId;
+    this.appId = options.appId;
+    this.appSecret = options.appSecret;
+    this.scopes = options.scopes || [];
   }
 
   /**
-   * 获取租户访问令牌，自动处理过期刷新
+   * 获取租户访问令牌，CLI模式下不需要手动管理
    */
   public async getTenantAccessToken(): Promise<string> {
-    const now = Date.now();
-    if (this.tenantAccessToken && now < this.tokenExpireTime - 60 * 1000) { // 提前1分钟刷新
-      return this.tenantAccessToken;
-    }
-
-    try {
-      const response = await this.client.auth.tenantAccessToken.internal({
-        data: {
-          app_id: this.teamConfig.feishu.appId,
-          app_secret: this.teamConfig.feishu.appSecret,
-        },
-      });
-
-      if (response.code !== 0) {
-        throw new Error(`获取飞书租户Token失败: ${response.msg}`);
-      }
-
-      if (!response.data) {
-        throw new Error('获取飞书租户Token失败：响应数据为空');
-      }
-
-      const data = response.data as { tenant_access_token: string; expire: number };
-      this.tenantAccessToken = data.tenant_access_token;
-      this.tokenExpireTime = now + data.expire * 1000;
-      logger.debug('飞书租户Token获取成功', {
-        teamId: this.teamConfig.teamId,
-        expireIn: data.expire
-      });
-
-      if (!this.tenantAccessToken) {
-        throw new Error('获取飞书租户Token失败：Token为空');
-      }
-      return this.tenantAccessToken;
-    } catch (error) {
-      logger.error('获取飞书租户Token失败', {
-        teamId: this.teamConfig.teamId,
-        error: (error as Error).message
-      });
-      throw error;
-    }
+    // CLI模式下由CLI自动处理token，这里返回空字符串
+    return '';
   }
 
   /**
-   * 通用API调用方法，自动添加token，处理重试
+   * 通用API调用方法，通过飞书CLI执行
    */
   public async request<T = any>(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -81,46 +53,51 @@ export class FeishuClient {
       retryTimes?: number;
     }
   ): Promise<T> {
-    const { params = {}, data = {}, headers = {}, retryTimes = 3 } = options || {};
-    const token = await this.getTenantAccessToken();
+    const { params = {}, data = {}, retryTimes = 3 } = options || {};
 
-    const defaultHeaders = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json; charset=utf-8',
-      ...headers,
-    };
+    // 构建CLI命令
+    let cliCommand = `feishu api ${method.toLowerCase()} ${path}`;
+
+    // 添加查询参数
+    if (Object.keys(params).length > 0) {
+      const paramsStr = Object.entries(params)
+        .map(([key, value]) => `--${key} ${JSON.stringify(value)}`)
+        .join(' ');
+      cliCommand += ` ${paramsStr}`;
+    }
+
+    // 添加请求体
+    if (Object.keys(data).length > 0) {
+      cliCommand += ` --data '${JSON.stringify(data).replace(/'/g, "'\\''")}'`;
+    }
+
+    // 指定profile
+    cliCommand += ` --profile ${this.cliProfile}`;
 
     let lastError: Error | null = null;
     for (let i = 0; i < retryTimes; i++) {
       try {
-        const response = await this.client.request({
-          method,
-          url: path,
-          params,
-          data,
-          headers: defaultHeaders,
-        });
+        logger.debug('调用飞书CLI命令', { command: cliCommand, teamId: this.teamId });
+        const { stdout, stderr } = await execAsync(cliCommand);
 
-        if (response.code !== 0) {
-          // Token过期，重新获取并重试
-          if (response.code === 99991663 || response.code === 99991664) {
-            this.tenantAccessToken = null;
-            if (i < retryTimes - 1) {
-              logger.debug('飞书Token过期，重试请求', { path, retry: i + 1 });
-              await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-              continue;
-            }
-          }
-          throw new Error(`飞书API调用失败 [${response.code}]: ${response.msg}`);
+        if (stderr) {
+          throw new Error(`CLI调用错误: ${stderr}`);
         }
 
-        return response.data as T;
+        const response = JSON.parse(stdout);
+
+        // CLI返回格式统一处理
+        if (response.code !== undefined && response.code !== 0) {
+          throw new Error(`飞书API调用失败 [${response.code}]: ${response.msg || response.message}`);
+        }
+
+        return (response.data || response) as T;
       } catch (error) {
         lastError = error as Error;
         if (i < retryTimes - 1) {
           // 指数退避重试
           const delay = 1000 * Math.pow(2, i);
-          logger.warn(`飞书API调用失败，${delay}ms后重试`, {
+          logger.warn(`飞书CLI调用失败，${delay}ms后重试`, {
             path,
             retry: i + 1,
             error: lastError.message
@@ -130,15 +107,83 @@ export class FeishuClient {
       }
     }
 
-    logger.error('飞书API调用最终失败', { path, error: lastError?.message });
+    logger.error('飞书CLI调用最终失败', { path, error: lastError?.message });
     throw lastError;
   }
 
   /**
-   * 获取原始lark客户端实例
+   * 扫描所有文档空间
    */
-  public getRawClient(): lark.Client {
-    return this.client;
+  public async scanDocSpaces(): Promise<Array<{ id: string; name: string }>> {
+    const response = await this.request('GET', '/open-apis/drive/explorer/v2/space/list');
+    return (response.spaces || []).map((space: any) => ({
+      id: space.space_id,
+      name: space.name
+    }));
+  }
+
+  /**
+   * 扫描文件夹下的子文件夹
+   */
+  public async scanFolders(folderToken: string = 'root'): Promise<Array<{ token: string; name: string }>> {
+    const response = await this.request('GET', '/open-apis/drive/explorer/v2/folder/list', {
+      params: { folder_token: folderToken }
+    });
+    return (response.files || [])
+      .filter((file: any) => file.type === 'folder')
+      .map((folder: any) => ({
+        token: folder.token,
+        name: folder.name
+      }));
+  }
+
+  /**
+   * 扫描所有项目（任务）
+   */
+  public async scanProjects(): Promise<Array<{ id: string; name: string }>> {
+    const response = await this.request('GET', '/open-apis/project/v1/projects');
+    return (response.projects || []).map((project: any) => ({
+      id: project.id,
+      name: project.name
+    }));
+  }
+
+  /**
+   * 扫描所有日历
+   */
+  public async scanCalendars(): Promise<Array<{ id: string; name: string }>> {
+    const response = await this.request('GET', '/open-apis/calendar/v4/calendars');
+    return (response.calendars || []).map((calendar: any) => ({
+      id: calendar.calendar_id,
+      name: calendar.summary
+    }));
+  }
+
+  /**
+   * 扫描用户所在的所有群聊
+   */
+  public async scanChats(): Promise<Array<{ id: string; name: string }>> {
+    const response = await this.request('GET', '/open-apis/im/v1/chats', {
+      params: { page_size: 100 }
+    });
+    return (response.items || []).map((chat: any) => ({
+      id: chat.chat_id,
+      name: chat.name
+    }));
+  }
+
+  /**
+   * 扫描所有用户
+   */
+  public async scanUsers(): Promise<Array<{ id: string; name: string; email: string }>> {
+    const response = await this.request('GET', '/open-apis/contact/v3/users', {
+      params: { page_size: 100 }
+    });
+    return (response.items || []).map((user: any) => ({
+      id: user.user_id,
+      name: user.name,
+      email: user.email
+    }));
   }
 }
 
@@ -147,19 +192,37 @@ export class FeishuClient {
  */
 export class FeishuClientFactory {
   private static instances: Map<string, FeishuClient> = new Map();
+  private static configService: TeamConfigService = TeamConfigService.getInstance();
 
-  public static getClient(teamConfig: TeamConfig): FeishuClient {
+  /**
+   * 获取飞书客户端实例
+   */
+  public static async getClient(teamConfig: TeamConfig): Promise<FeishuClient> {
     const key = teamConfig.teamId;
     if (!this.instances.has(key)) {
-      this.instances.set(key, new FeishuClient(teamConfig));
+      // 获取合并后的飞书配置
+      const feishuConfig = await this.configService.getMergedFeishuConfig(teamConfig.teamId);
+      this.instances.set(key, new FeishuClient({
+        profile: teamConfig.teamId,
+        teamId: teamConfig.teamId,
+        appId: feishuConfig.appId,
+        appSecret: feishuConfig.appSecret,
+        scopes: feishuConfig.scopes,
+      }));
     }
     return this.instances.get(key)!;
   }
 
+  /**
+   * 移除指定团队的客户端实例
+   */
   public static removeClient(teamId: string): void {
     this.instances.delete(teamId);
   }
 
+  /**
+   * 清除所有客户端实例
+   */
   public static clearAll(): void {
     this.instances.clear();
   }
