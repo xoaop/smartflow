@@ -10,11 +10,9 @@ const logger = Logger.getInstance();
  * 飞书文档采集器
  */
 export class DocCollector implements ISourceCollector<DocItem> {
-  private feishuClient: FeishuClient;
+  private feishuClient: FeishuClient | null = null;
 
-  constructor(teamConfig: TeamConfig) {
-    this.feishuClient = FeishuClientFactory.getClient(teamConfig);
-  }
+  constructor() {}
 
   /**
    * 采集指定时间范围内修改的文档
@@ -23,6 +21,11 @@ export class DocCollector implements ISourceCollector<DocItem> {
     if (!teamConfig.dataSources.docs.enabled) {
       logger.info('文档采集未启用，跳过', { teamId: teamConfig.teamId });
       return [];
+    }
+
+    // 初始化飞书客户端
+    if (!this.feishuClient) {
+      this.feishuClient = await FeishuClientFactory.getClient(teamConfig);
     }
 
     logger.info('开始采集文档数据', {
@@ -95,7 +98,7 @@ export class DocCollector implements ISourceCollector<DocItem> {
     let pageToken = '';
 
     do {
-      const response: any = await this.feishuClient.request('GET', '/drive/v1/files', {
+      const response: any = await this.feishuClient!.request('GET', '/drive/v1/files', {
         params: {
           folder_token: folderToken,
           page_size: 100,
@@ -158,7 +161,7 @@ export class DocCollector implements ISourceCollector<DocItem> {
     try {
       if (docType === 'docx') {
         // 获取文档的基本信息和前几段内容
-        const response: any = await this.feishuClient.request('GET', `/docx/v1/documents/${docToken}/raw_content`);
+        const response: any = await this.feishuClient!.request('GET', `/docx/v1/documents/${docToken}/raw_content`);
         const content = response.content || '';
         // 返回前500个字符作为摘要
         return content.slice(0, 500) + (content.length > 500 ? '...' : '');

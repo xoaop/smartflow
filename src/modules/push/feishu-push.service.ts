@@ -49,7 +49,7 @@ export class FeishuPushService {
 
       // 如果需要审核，先推送给审核人
       if (this.teamConfig.push.needAudit && this.teamConfig.push.auditorId) {
-        await this.pushToUser(this.teamConfig.push.auditorId, card, true);
+        await this.pushToUser(this.teamConfig.push.auditorId, card, true, report);
         logger.info('周报已推送给审核人，等待审核', {
           teamId: this.teamConfig.teamId,
           auditorId: this.teamConfig.push.auditorId,
@@ -184,9 +184,9 @@ export class FeishuPushService {
   /**
    * 推送给用户
    */
-  private async pushToUser(userId: string, card: any, isAudit: boolean = false): Promise<string> {
+  private async pushToUser(userId: string, card: any, isAudit: boolean = false, report?: WeeklyReport): Promise<string> {
     // 如果是审核消息，添加审核按钮
-    if (isAudit) {
+    if (isAudit && report) {
       card.actions = card.actions || [];
       card.actions.push(
         {
@@ -198,6 +198,8 @@ export class FeishuPushService {
           type: 'primary',
           value: {
             action: 'approve_report',
+            report_id: report.id, // 注意：这里需要report有id字段
+            team_id: this.teamConfig.teamId,
           },
         },
         {
@@ -209,6 +211,8 @@ export class FeishuPushService {
           type: 'danger',
           value: {
             action: 'reject_report',
+            report_id: report.id,
+            team_id: this.teamConfig.teamId,
           },
         }
       );

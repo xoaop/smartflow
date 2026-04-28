@@ -10,11 +10,9 @@ const logger = Logger.getInstance();
  * 飞书任务采集器
  */
 export class TaskCollector implements ISourceCollector<TaskItem> {
-  private feishuClient: FeishuClient;
+  private feishuClient: FeishuClient | null = null;
 
-  constructor(teamConfig: TeamConfig) {
-    this.feishuClient = FeishuClientFactory.getClient(teamConfig);
-  }
+  constructor() {}
 
   /**
    * 采集指定时间范围内状态变化的任务
@@ -23,6 +21,11 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
     if (!teamConfig.dataSources.tasks.enabled) {
       logger.info('任务采集未启用，跳过', { teamId: teamConfig.teamId });
       return [];
+    }
+
+    // 初始化飞书客户端
+    if (!this.feishuClient) {
+      this.feishuClient = await FeishuClientFactory.getClient(teamConfig);
     }
 
     if (teamConfig.dataSources.tasks.projectIds.length === 0) {
@@ -65,7 +68,7 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
     let pageToken = '';
 
     do {
-      const response: any = await this.feishuClient.request('GET', `/task/v2/tasks`, {
+      const response: any = await this.feishuClient!.request('GET', `/task/v2/tasks`, {
         params: {
           project_id: projectId,
           page_size: 100,
@@ -132,7 +135,7 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
     try {
       let pageToken = '';
       do {
-        const response: any = await this.feishuClient.request('GET', `/task/v2/tasks/${taskId}/activity_logs`, {
+        const response: any = await this.feishuClient!.request('GET', `/task/v2/tasks/${taskId}/activity_logs`, {
           params: {
             page_size: 100,
             page_token: pageToken,

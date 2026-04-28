@@ -61,10 +61,16 @@ export class TeamConfigService {
         logLevel: 'info',
         dataDir: path.join(homedir(), '.smartflow', 'data'),
         feishu: {
+          appId: '',
+          appSecret: '',
           scopes: [],
+          eventVerificationToken: '',
+          encryptKey: '',
         },
         llm: {
-          temperature: 0.3,
+          provider: 'claude',
+          model: 'claude-3-5-sonnet-20240620',
+          maxTokens: 4096,
         },
       };
       fs.writeFileSync(this.globalConfigPath, yaml.stringify(defaultConfig));
@@ -88,10 +94,16 @@ export class TeamConfigService {
             logLevel: 'info',
             dataDir: path.join(homedir(), '.smartflow', 'data'),
             feishu: {
+              appId: '',
+              appSecret: '',
               scopes: [],
+              eventVerificationToken: '',
+              encryptKey: '',
             },
             llm: {
-              temperature: 0.3,
+              provider: 'claude',
+              model: 'claude-3-5-sonnet-20240620',
+              maxTokens: 4096,
             },
           };
           await this.saveGlobalConfig(config);

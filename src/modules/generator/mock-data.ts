@@ -1,4 +1,4 @@
-import { CollectedData, DocItem, TaskItem, MeetingItem } from '../../types';
+import { CollectedData, DocItem, TaskItem, MeetingItem, MessageItem } from '../../types';
 import dayjs from 'dayjs';
 
 /**
@@ -175,6 +175,54 @@ export function generateMockData(): CollectedData {
     },
   ];
 
+  // 模拟群聊消息数据
+  const messages: MessageItem[] = [
+    {
+      id: 'msg1',
+      chatId: 'oc_g1',
+      chatName: '研发团队群',
+      url: 'https://feishu.cn/chat/msg1',
+      sendTime: dayjs().subtract(2, 'day').toDate(),
+      sender: { id: 'user2', name: '李四' },
+      content: '用户中心的数据库设计已经完成了，大家有问题可以随时找我讨论',
+      mentions: [],
+      isImportant: false,
+    },
+    {
+      id: 'msg2',
+      chatId: 'oc_g1',
+      chatName: '研发团队群',
+      url: 'https://feishu.cn/chat/msg2',
+      sendTime: dayjs().subtract(1, 'day').toDate(),
+      sender: { id: 'user3', name: '王五' },
+      content: '支付系统压测报告出来了，TPS能到5000，但是数据库连接池配置有点问题需要优化',
+      mentions: [],
+      isImportant: true,
+    },
+    {
+      id: 'msg3',
+      chatId: 'oc_g1',
+      chatName: '研发团队群',
+      url: 'https://feishu.cn/chat/msg3',
+      sendTime: dayjs().subtract(3, 'day').toDate(),
+      sender: { id: 'user5', name: '钱七' },
+      content: '移动端首页开发完成了，已经提测，大家可以体验一下',
+      mentions: [],
+      isImportant: false,
+    },
+    {
+      id: 'msg4',
+      chatId: 'oc_g1',
+      chatName: '研发团队群',
+      url: 'https://feishu.cn/chat/msg4',
+      sendTime: dayjs().subtract(1, 'hour').toDate(),
+      sender: { id: 'user1', name: '张三' },
+      content: '提醒一下大家，Q2项目进度计划本周内要提交哦',
+      mentions: [],
+      isImportant: true,
+    },
+  ];
+
   return {
     teamId: 'demo-team',
     timeRange: {
@@ -185,5 +233,6 @@ export function generateMockData(): CollectedData {
     docs,
     tasks,
     meetings,
+    messages,
   };
 }

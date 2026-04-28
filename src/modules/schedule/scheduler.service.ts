@@ -250,6 +250,7 @@ export class SchedulerService {
 
       // 4. 保存到数据库
       const reportId = this.saveReport(report);
+      report.id = reportId; // 将数据库生成的ID赋值给报告对象
 
       // 5. 推送
       const pushService = new FeishuPushService(teamConfig);
