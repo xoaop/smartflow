@@ -11,6 +11,8 @@ SmartFlow 是一个自动化的团队效能周报生成系统，基于飞书Open
 - **定时自动推送**：灵活的定时任务配置，到点自动推送飞书卡片
 - **智能风险识别**：自动识别任务延期、决议未跟进等潜在风险
 - **来源溯源**：所有内容都标注原始来源链接，支持点击跳转
+- **双模式支持**：v2.0新增支持飞书官方CLI模式，自动获得全量飞书API能力
+- **OpenClaw原生支持**：可以作为OpenClaw Agent直接部署到飞书，支持自然语言交互和卡片操作
 
 ## 🚀 快速开始
 
@@ -20,6 +22,8 @@ SmartFlow 是一个自动化的团队效能周报生成系统，基于飞书Open
 - Claude API Key
 
 ### 安装部署
+
+#### 方式一：CLI版本（本地部署）
 ```bash
 # 1. 安装依赖
 npm install
@@ -32,7 +36,30 @@ npm link
 
 # 4. 健康检查
 smartflow health
+
+# 可选：安装飞书官方CLI（使用CLI模式时需要）
+npx -y @larksuite/openclaw-lark install
 ```
+
+#### 方式二：OpenClaw Agent（飞书原生部署）
+```bash
+# 1. 克隆项目
+git clone <your-repo-url>
+cd smartflow
+
+# 2. 安装依赖
+npm install
+
+# 3. 编译
+npm run build
+
+# 4. 本地调试
+npm run openclaw:dev
+
+# 5. 发布到OpenClaw平台
+npm run openclaw:publish
+```
+详细部署指南请参考 [OpenClaw部署指南](文档/OPENCLAW-DEPLOY.md)
 
 ### 配置使用
 1. 复制 `config/config.example.yaml` 到 `~/.smartflow/config/config.yaml`，配置Claude API Key
@@ -45,6 +72,9 @@ smartflow health
 ## 📖 详细文档
 - [使用手册](docs/使用手册.md) - 完整的使用说明和配置指南
 - [配置模板](config/) - 配置文件示例
+- [v2.0升级指南](文档/UPGRADE-2.0.md) - 从v1.x升级到v2.0的指南
+- [CLI模式说明](文档/UPGRADE-2.0.md) - 飞书官方CLI模式使用说明
+- [OpenClaw部署指南](文档/OPENCLAW-DEPLOY.md) - 作为OpenClaw Agent部署到飞书的指南
 
 ## 📦 项目结构
 ```
@@ -62,7 +92,8 @@ src/
 ## 🛠️ 技术栈
 - **TypeScript** - 类型安全的开发语言
 - **Node.js** - 运行时环境
-- **飞书开放平台SDK** - 飞书API对接
+- **飞书开放平台SDK** - 飞书API对接（SDK模式）
+- **飞书官方CLI** - 官方全量API支持（CLI模式）
 - **Anthropic Claude SDK** - 大模型集成
 - **node-schedule** - 定时任务调度
 - **SQLite** - 轻量级数据存储
