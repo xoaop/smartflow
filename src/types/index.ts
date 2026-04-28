@@ -49,10 +49,12 @@ export type LLMConfig = ClaudeConfig | OpenAIConfig | QwenConfig | ErnieConfig |
 export interface TeamConfig {
   teamId: string;
   teamName: string;
-  // 飞书API配置
+  // 飞书API配置（可选，优先使用全局配置）
   feishu: {
-    appId: string;
-    appSecret: string;
+    appId?: string;
+    appSecret?: string;
+    encryptKey?: string;
+    verificationToken?: string;
     scopes: string[];
   };
   // 数据源配置
@@ -70,6 +72,11 @@ export interface TeamConfig {
     meetings: {
       enabled: boolean;
       calendarIds: string[];
+    };
+    messages: {
+      enabled: boolean;
+      chatIds: string[];
+      includeKeywords: string[];
     };
   };
   // 生成配置
@@ -163,6 +170,40 @@ export interface MeetingItem {
 }
 
 /**
+ * 采集到的群聊消息数据
+ */
+export interface MessageItem {
+  id: string;
+  chatId: string;
+  chatName: string;
+  url: string;
+  sendTime: Date;
+  sender: {
+    id: string;
+    name: string;
+  };
+  content: string;
+  mentions: Array<{
+    id: string;
+    name: string;
+  }>;
+  isImportant: boolean;
+}
+
+/**
+ * 采集到的所有数据
+ */
+export interface CollectedData {
+  teamId: string;
+  timeRange: TimeRange;
+  collectedAt: Date;
+  docs: DocItem[];
+  tasks: TaskItem[];
+  meetings: MeetingItem[];
+  messages: MessageItem[];
+}
+
+/**
  * 采集到的所有数据
  */
 export interface CollectedData {
@@ -211,7 +252,7 @@ export interface WeeklyReport {
     }>;
   };
   sources: Array<{
-    type: 'doc' | 'task' | 'meeting';
+    type: 'doc' | 'task' | 'meeting' | 'message';
     title: string;
     url: string;
   }>;
