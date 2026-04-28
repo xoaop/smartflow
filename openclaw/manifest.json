@@ -1,0 +1,175 @@
+{
+  "id": "com.feishu.smartflow",
+  "name": "SmartFlow 周报助手",
+  "version": "2.0.0",
+  "description": "自动采集飞书文档、任务、会议数据，智能生成团队效能周报",
+  "author": "SmartFlow Team",
+  "homepage": "https://github.com/your-repo/smartflow",
+  "tags": ["周报", "效能", "团队协作"],
+  "icon": "https://cdn.jsdelivr.net/gh/your-repo/smartflow@main/docs/icon.png",
+
+  "permissions": {
+    "feishu": [
+      "im:message:send_as_bot",
+      "im:message:readonly",
+      "docx:document:readonly",
+      "drive:drive.metadata:readonly",
+      "drive:file:readonly",
+      "task:task:read",
+      "calendar:calendar.event:read",
+      "vc:meeting:readonly",
+      "wiki:wiki:readonly"
+    ],
+    "storage": ["read", "write"],
+    "schedule": ["create", "delete", "list"]
+  },
+
+  "skills": [
+    {
+      "id": "generate-weekly-report",
+      "name": "生成周报",
+      "description": "生成指定时间范围的团队周报",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "团队ID",
+            "optional": true
+          },
+          "range": {
+            "type": "string",
+            "description": "时间范围：lastweek, thisweek, lastmonth, thismonth 或自定义如 2024-01-01~2024-01-07",
+            "default": "lastweek"
+          },
+          "push": {
+            "type": "boolean",
+            "description": "是否自动推送到配置的渠道",
+            "default": false
+          }
+        }
+      }
+    },
+    {
+      "id": "list-teams",
+      "name": "查看团队列表",
+      "description": "查看所有已配置的团队"
+    },
+    {
+      "id": "create-team-config",
+      "name": "创建团队配置",
+      "description": "创建新的团队配置",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "团队ID"
+          },
+          "teamName": {
+            "type": "string",
+            "description": "团队名称"
+          }
+        },
+        "required": ["teamId", "teamName"]
+      }
+    },
+    {
+      "id": "test-push",
+      "name": "测试推送",
+      "description": "测试飞书推送功能",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "团队ID"
+          }
+        },
+        "required": ["teamId"]
+      }
+    },
+    {
+      "id": "query-document",
+      "name": "查询文档",
+      "description": "根据文档路径查询并返回文档内容摘要",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "文档路径，如 \"项目背景.md\""
+          }
+        },
+        "required": ["path"]
+      }
+    }
+  ],
+
+  "triggers": {
+    "cron": [
+      {
+        "id": "weekly-report-schedule",
+        "name": "每周自动生成周报",
+        "description": "每周五18:00自动生成并推送周报",
+        "cron": "0 18 * * 5",
+        "enabled": true,
+        "action": {
+          "skill": "generate-weekly-report",
+          "parameters": {
+            "range": "lastweek",
+            "push": true
+          }
+        }
+      }
+    ],
+    "message": [
+      {
+        "id": "mention-trigger",
+        "name": "@机器人触发",
+        "description": "当用户@机器人时触发",
+        "keywords": ["周报", "生成", "总结"],
+        "action": {
+          "skill": "generate-weekly-report"
+        }
+      }
+    ]
+  },
+
+  "cards": {
+    "weekly-report": {
+      "title": "团队周报",
+      "description": "智能生成的团队效能周报",
+      "actions": [
+        {
+          "id": "regenerate",
+          "name": "重新生成",
+          "action": {
+            "skill": "generate-weekly-report",
+            "parameters": {
+              "range": "${range}",
+              "push": false
+            }
+          }
+        },
+        {
+          "id": "push-to-group",
+          "name": "推送到群",
+          "action": {
+            "skill": "generate-weekly-report",
+            "parameters": {
+              "range": "${range}",
+              "push": true
+            }
+          }
+        }
+      ]
+    }
+  },
+
+  "entry": "dist/openclaw/index.js",
+  "runtime": "nodejs>=20.0.0",
+  "dependencies": {
+    "@openclaw/sdk": "^1.0.0"
+  }
+}
