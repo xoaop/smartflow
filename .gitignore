@@ -41,3 +41,15 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# OpenClaw Skill
+.openclaw/
+.skill-pack/
+openclaw-local.json
+*.openclaw
+skill-*.tgz
+
+# Environment variables
+.env
+.env.local
+.env.*.local

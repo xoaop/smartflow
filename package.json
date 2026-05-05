@@ -1,44 +1,68 @@
 {
   "name": "smartflow-weekly",
   "version": "1.0.0",
-  "description": "基于飞书OpenClaw的团队效能周报生成系统",
+  "description": "🏆 飞书生态首款智能团队效能周报生成Skill，自动整合多源数据，AI生成高价值工作总结",
   "main": "dist/openclaw/index.js",
+  "openclaw": {
+    "id": "smartflow-weekly",
+    "name": "📊 智汇流周报",
+    "version": "1.0.0",
+    "author": "SmartFlow Team",
+    "category": "办公效率",
+    "tags": ["飞书", "周报", "效能", "AI", "团队管理"],
+    "icon": "📊",
+    "backgroundColor": "#165DFF"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "jest"
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "type-check": "tsc --noEmit",
+    "skill:dev": "openclaw dev",
+    "skill:pack": "openclaw pack",
+    "skill:publish": "openclaw publish",
+    "skill:validate": "openclaw validate",
+    "skill:install": "openclaw skills link .",
+    "skill:uninstall": "openclaw skills uninstall smartflow-weekly"
   },
   "keywords": [
     "feishu",
+    "lark",
     "weekly-report",
     "openclaw",
-    "skill"
+    "skill",
+    "ai",
+    "claude",
+    "team-efficiency",
+    "productivity"
   ],
-  "author": "",
+  "author": "SmartFlow Team",
   "license": "MIT",
+  "homepage": "https://github.com/your-org/smartflow",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/smartflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/smartflow/issues"
+  },
   "dependencies": {
-    "@larksuiteoapi/node-sdk": "^1.20.0",
-    "better-sqlite3": "^11.5.0",
-    "body-parser": "^2.2.2",
-    "chalk": "^4.1.2",
-    "commander": "^11.1.0",
+    "@anthropic-ai/sdk": "^0.92.0",
     "dayjs": "^1.11.10",
-    "express": "^5.2.1",
     "fs-extra": "^11.2.0",
     "winston": "^3.11.0",
     "yaml": "^2.3.4",
     "zod": "^3.22.4"
   },
-  "peerDependencies": {
-    "@openclaw/sdk": "^1.0.0"
-  },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.9",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/body-parser": "^1.19.6",
     "@types/express": "^5.0.6",
     "@types/fs-extra": "^11.0.4",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.11.0",
+    "@types/node-schedule": "^2.1.8",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.1",
     "typescript": "^5.3.3"

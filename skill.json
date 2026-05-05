@@ -1,0 +1,123 @@
+{
+  "schema_version": "v1",
+  "id": "smartflow-weekly",
+  "name": "📊 智汇流周报",
+  "version": "1.0.0",
+  "description": "智能团队效能周报生成器，自动整合飞书文档、任务、会议多源数据，通过大模型生成高信息密度的工作总结与风险洞察",
+  "author": "SmartFlow Team",
+  "homepage": "https://github.com/your-org/smartflow",
+  "license": "MIT",
+  "tags": ["飞书", "周报", "效能", "团队管理", "AI生成"],
+  "categories": ["办公效率", "团队协作"],
+
+  "permissions": {
+    "feishu": [
+      "im:message",
+      "im:chat",
+      "drive:document",
+      "project:task",
+      "calendar:calendar",
+      "contact:user"
+    ],
+    "llm": ["chat"],
+    "storage": ["kv", "file"],
+    "schedule": ["create", "delete", "list"]
+  },
+
+  "env_vars": [
+    {
+      "name": "SMARTFLOW_CONFIG_DIR",
+      "description": "配置文件目录，默认 ~/.smartflow/config",
+      "required": false
+    },
+    {
+      "name": "SMARTFLOW_DATA_DIR",
+      "description": "数据存储目录，默认 ~/.smartflow/data",
+      "required": false
+    }
+  ],
+
+  "skills": [
+    {
+      "name": "generate",
+      "description": "生成团队周报",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "团队ID，不指定则使用默认团队"
+          },
+          "range": {
+            "type": "string",
+            "description": "时间范围：lastweek(上周), thisweek(本周), lastmonth(上月), thismonth(本月), 或自定义如 2024-01-01~2024-01-07",
+            "default": "lastweek"
+          },
+          "push": {
+            "type": "boolean",
+            "description": "生成后是否自动推送到配置的渠道",
+            "default": false
+          },
+          "output": {
+            "type": "string",
+            "description": "输出到文件路径"
+          }
+        }
+      }
+    },
+    {
+      "name": "health",
+      "description": "检查服务运行状态"
+    },
+    {
+      "name": "test-push",
+      "description": "测试飞书推送功能",
+      "parameters": {
+        "team": {
+          "type": "string",
+          "description": "团队ID",
+          "required": true
+        }
+      }
+    },
+    {
+      "name": "config-list",
+      "description": "查看所有团队配置列表"
+    },
+    {
+      "name": "setup",
+      "description": "启动配置向导，引导完成团队配置"
+    }
+  ],
+
+  "actions": [
+    {
+      "name": "approve_report",
+      "description": "审核通过周报"
+    },
+    {
+      "name": "reject_report",
+      "description": "审核驳回周报"
+    },
+    {
+      "name": "regenerate-report",
+      "description": "重新生成周报"
+    },
+    {
+      "name": "push-report",
+      "description": "推送周报"
+    }
+  ],
+
+  "entry": "dist/openclaw/index.js",
+  "runtime": "nodejs >= 20.0.0",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.92.0",
+    "better-sqlite3": "^11.5.0",
+    "dayjs": "^1.11.10",
+    "fs-extra": "^11.2.0",
+    "node-schedule": "^2.1.1",
+    "yaml": "^2.3.4",
+    "zod": "^3.22.4"
+  }
+}
