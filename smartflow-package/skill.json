@@ -1,5 +1,5 @@
 {
-  "manifest_version": "v1",
+  "schema_version": "v1",
   "id": "smartflow-weekly",
   "name": "📊 智汇流周报",
   "version": "1.0.0",
@@ -119,84 +119,5 @@
     "node-schedule": "^2.1.1",
     "yaml": "^2.3.4",
     "zod": "^3.22.4"
-  },
-
-  "triggers": {
-    "cron": [
-      {
-        "id": "weekly-report-schedule",
-        "name": "每周自动生成周报",
-        "description": "每周五18:00自动生成并推送周报",
-        "cron": "0 18 * * 5",
-        "enabled": true,
-        "action": {
-          "skill": "generate",
-          "parameters": {
-            "range": "lastweek",
-            "push": true
-          }
-        }
-      }
-    ],
-    "message": [
-      {
-        "id": "mention-trigger",
-        "name": "@机器人触发",
-        "description": "当用户@机器人时触发",
-        "keywords": ["周报", "生成", "总结"],
-        "action": {
-          "skill": "generate",
-          "parameters": {
-            "range": "lastweek",
-            "push": false
-          }
-        }
-      },
-      {
-        "id": "help-trigger",
-        "name": "帮助触发",
-        "description": "当用户询问帮助时触发",
-        "keywords": ["帮助", "怎么用", "使用说明"],
-        "action": {
-          "skill": "help"
-        }
-      },
-      {
-        "id": "welcome-trigger",
-        "name": "欢迎触发",
-        "description": "当用户第一次使用或说你好时触发",
-        "keywords": ["你好", "hi", "hello", "欢迎"],
-        "action": {
-          "skill": "welcome"
-        }
-      },
-      {
-        "id": "demo-trigger",
-        "name": "演示触发",
-        "description": "当用户想体验演示功能时触发",
-        "keywords": ["演示", "demo", "体验"],
-        "action": {
-          "skill": "demo"
-        }
-      },
-      {
-        "id": "setup-trigger",
-        "name": "配置触发",
-        "description": "当用户想进行配置时触发",
-        "keywords": ["配置", "setup", "设置"],
-        "action": {
-          "skill": "setup"
-        }
-      },
-      {
-        "id": "health-trigger",
-        "name": "健康检查触发",
-        "description": "当用户想检查服务状态时触发",
-        "keywords": ["健康检查", "状态", "health"],
-        "action": {
-          "skill": "health"
-        }
-      }
-    ]
   }
 }
