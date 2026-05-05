@@ -30,12 +30,12 @@ export class FeishuCardBuilder {
     // 卡片内容元素
     const elements: any[] = [];
 
-    // 数据统计面板
-    const docCount = report.sources.filter(s => s.type === 'doc').length;
-    const taskCount = report.sources.filter(s => s.type === 'task').length;
-    const meetingCount = report.sources.filter(s => s.type === 'meeting').length;
-    const messageCount = report.sources.filter(s => s.type === 'message').length;
-    const riskCount = report.content.riskWarnings.length;
+    // 数据统计面板（增加容错处理）
+    const docCount = Array.isArray(report.sources) ? report.sources.filter(s => s.type === 'doc').length : 0;
+    const taskCount = Array.isArray(report.sources) ? report.sources.filter(s => s.type === 'task').length : 0;
+    const meetingCount = Array.isArray(report.sources) ? report.sources.filter(s => s.type === 'meeting').length : 0;
+    const messageCount = Array.isArray(report.sources) ? report.sources.filter(s => s.type === 'message').length : 0;
+    const riskCount = Array.isArray(report.content?.riskWarnings) ? report.content.riskWarnings.length : 0;
 
     elements.push({
       tag: 'column_set',
