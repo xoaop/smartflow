@@ -232,7 +232,7 @@ export class FeishuClientFactory {
       // 获取合并后的飞书配置
       const feishuConfig = await this.configService.getMergedFeishuConfig(teamConfig.teamId);
       // 飞书CLI的profile名称使用appId，保持和全局配置一致
-      const profile = feishuConfig.appId || 'default';
+      const profile = feishuConfig.appId || 'cli_a97eea6dd9b85bc2';
       this.instances.set(key, new FeishuClient({
         profile,
         teamId: teamConfig.teamId,

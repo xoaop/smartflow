@@ -28,8 +28,11 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
       this.feishuClient = await FeishuClientFactory.getClient(teamConfig);
     }
 
-    if (teamConfig.dataSources.tasks.projectIds.length === 0) {
-      logger.warn('未配置任务项目ID，跳过任务采集', { teamId: teamConfig.teamId });
+    // 兼容两种配置：优先使用taskListIds，否则使用projectIds
+    const taskListIds = teamConfig.dataSources.tasks.taskListIds || teamConfig.dataSources.tasks.projectIds || [];
+
+    if (taskListIds.length === 0) {
+      logger.warn('未配置任务清单ID，跳过任务采集', { teamId: teamConfig.teamId });
       return [];
     }
 
@@ -37,15 +40,15 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
       teamId: teamConfig.teamId,
       startTime: dayjs(timeRange.start).format('YYYY-MM-DD HH:mm:ss'),
       endTime: dayjs(timeRange.end).format('YYYY-MM-DD HH:mm:ss'),
-      projectIds: teamConfig.dataSources.tasks.projectIds
+      taskListIds
     });
 
     const tasks: TaskItem[] = [];
 
     try {
-      for (const projectId of teamConfig.dataSources.tasks.projectIds) {
-        const projectTasks = await this.collectTasksFromProject(projectId, timeRange, teamConfig);
-        tasks.push(...projectTasks);
+      for (const taskListId of taskListIds) {
+        const listTasks = await this.collectTasksFromTaskList(taskListId, timeRange, teamConfig);
+        tasks.push(...listTasks);
       }
 
       logger.info('任务采集完成', { teamId: teamConfig.teamId, count: tasks.length });
@@ -57,10 +60,10 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
   }
 
   /**
-   * 采集指定项目中的任务
+   * 采集指定任务清单中的任务
    */
-  private async collectTasksFromProject(
-    projectId: string,
+  private async collectTasksFromTaskList(
+    taskListId: string,
     timeRange: TimeRange,
     teamConfig: TeamConfig
   ): Promise<TaskItem[]> {
@@ -68,10 +71,9 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
     let pageToken = '';
 
     do {
-      const response: any = await this.feishuClient!.request('GET', `/task/v2/tasks`, {
+      const response: any = await this.feishuClient!.request('GET', `/task/v2/tasklists/${taskListId}/tasks`, {
         params: {
-          project_id: projectId,
-          page_size: 100,
+          page_size: 50,
           page_token: pageToken,
         },
       });
@@ -82,15 +84,15 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
 
       for (const task of response.items) {
         // 获取任务的动态历史，检查在时间范围内是否有状态变更
-        const statusChanged = await this.checkTaskStatusChangedInRange(task.id, timeRange);
+        const statusChanged = await this.checkTaskStatusChangedInRange(task.guid, timeRange);
 
         if (!statusChanged) {
           continue;
         }
 
         // 过滤排除的用户
-        if (teamConfig.filters.excludeUsers.includes(task.creator.id) ||
-            (task.assignee && teamConfig.filters.excludeUsers.includes(task.assignee.id))) {
+        if (teamConfig.filters.excludeUsers.includes(task.creator?.id || '') ||
+            (task.assignees?.length > 0 && teamConfig.filters.excludeUsers.includes(task.assignees[0].id))) {
           continue;
         }
 
@@ -102,22 +104,22 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
         }
 
         tasks.push({
-          id: task.id,
+          id: task.guid,
           title: task.name,
-          url: `https://applink.feishu.cn/client/task/detail/${task.id}`,
-          status: task.status,
+          url: `https://applink.feishu.cn/client/todo/detail?guid=${task.guid}`,
+          status: task.completed ? 'done' : 'in_progress',
           statusChangedTime: statusChanged,
-          assignee: task.assignee ? {
-            id: task.assignee.id,
-            name: task.assignee.name || '',
+          assignee: task.assignees?.length > 0 ? {
+            id: task.assignees[0].id,
+            name: task.assignees[0].name || '',
           } : { id: '', name: '未分配' },
           creator: {
-            id: task.creator.id,
-            name: task.creator.name || '',
+            id: task.creator?.id || '',
+            name: task.creator?.name || '',
           },
-          dueTime: task.due ? new Date(task.due) : undefined,
-          projectId,
-          projectName: task.project?.name || '',
+          dueTime: task.due?.date ? new Date(task.due.date) : undefined,
+          projectId: taskListId,
+          projectName: '任务清单',
           description: task.description || '',
         });
       }
@@ -129,39 +131,32 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
   }
 
   /**
-   * 检查任务在指定时间范围内是否有状态变更
+   * 检查任务在指定时间范围内是否有更新（轻量任务简化版）
    */
   private async checkTaskStatusChangedInRange(taskId: string, timeRange: TimeRange): Promise<Date | null> {
     try {
-      let pageToken = '';
-      do {
-        const response: any = await this.feishuClient!.request('GET', `/task/v2/tasks/${taskId}/activity_logs`, {
-          params: {
-            page_size: 100,
-            page_token: pageToken,
-          },
-        });
+      // 轻量任务简化处理：直接查询任务详情，获取更新时间
+      const response: any = await this.feishuClient!.request('GET', `/task/v2/tasks/${taskId}`);
 
-        if (!response.items || response.items.length === 0) {
-          break;
-        }
+      if (!response) {
+        return null;
+      }
 
-        // 查找状态变更的记录
-        for (const log of response.items) {
-          if (log.field === 'status') {
-            const changeTime = new Date(log.created_at);
-            if (changeTime >= timeRange.start && changeTime <= timeRange.end) {
-              return changeTime;
-            }
-          }
-        }
+      const updateTime = new Date(response.updated_at);
+      // 如果更新时间在时间范围内，认为有变更
+      if (updateTime >= timeRange.start && updateTime <= timeRange.end) {
+        return updateTime;
+      }
 
-        pageToken = response.page_token;
-      } while (pageToken);
+      // 检查创建时间是否在范围内
+      const createTime = new Date(response.created_at);
+      if (createTime >= timeRange.start && createTime <= timeRange.end) {
+        return createTime;
+      }
 
       return null;
     } catch (error) {
-      logger.warn('获取任务动态失败', { taskId, error: (error as Error).message });
+      logger.warn('获取任务详情失败', { taskId, error: (error as Error).message });
       return null;
     }
   }

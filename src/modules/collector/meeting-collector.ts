@@ -70,8 +70,8 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
     do {
       const response: any = await this.feishuClient!.request('GET', `/calendar/v4/calendars/${calendarId}/events`, {
         params: {
-          start_time: Math.floor(timeRange.start.getTime() / 1000),
-          end_time: Math.floor(timeRange.end.getTime() / 1000),
+          start_time: String(Math.floor(timeRange.start.getTime() / 1000)),
+          end_time: String(Math.floor(timeRange.end.getTime() / 1000)),
           page_size: 100,
           page_token: pageToken,
         },
