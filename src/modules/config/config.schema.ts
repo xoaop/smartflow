@@ -9,10 +9,10 @@ export const TeamConfigSchema = z.object({
 
   feishu: z.object({
     // 团队级别的飞书配置（可选），如果配置了会覆盖全局配置
-    appId: z.string().optional(),
-    appSecret: z.string().optional(),
-    encryptKey: z.string().optional(),
-    verificationToken: z.string().optional(),
+    appId: z.string().default(''),
+    appSecret: z.string().default(''),
+    encryptKey: z.string().default(''),
+    verificationToken: z.string().default(''),
     scopes: z.array(z.string()).default([]),
   }).default({}),
 
@@ -74,7 +74,6 @@ export const GlobalConfigSchema = z.object({
   defaultTeamId: z.string().optional(),
   logLevel: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   dataDir: z.string().default('~/.smartflow/data'),
-<<<<<<< HEAD
 
   // 全局飞书应用配置，所有团队共享
   feishu: z.object({
@@ -127,55 +126,7 @@ export const GlobalConfigSchema = z.object({
   ]).default({
     provider: 'claude',
     model: 'claude-3-5-sonnet-20240620',
-=======
-  // 飞书全局配置
-  feishu: z.object({
-    eventVerificationToken: z.string().optional(),
-    encryptKey: z.string().optional(),
-  }).optional(),
-  llm: z.discriminatedUnion('provider', [
-    z.object({
-      provider: z.literal('claude').default('claude'),
-      apiKey: z.string().optional(),
-      baseUrl: z.string().optional(),
-      model: z.string().default('claude-3-5-sonnet-20240620'),
-      maxTokens: z.number().optional(),
-    }),
-    z.object({
-      provider: z.literal('openai'),
-      apiKey: z.string().optional(),
-      baseUrl: z.string().optional(),
-      model: z.string().default('gpt-4o'),
-      maxTokens: z.number().optional(),
-      organization: z.string().optional(),
-    }),
-    z.object({
-      provider: z.literal('qwen'), // 通义千问
-      apiKey: z.string().optional(),
-      baseUrl: z.string().optional(),
-      model: z.string().default('qwen-max'),
-      maxTokens: z.number().optional(),
-    }),
-    z.object({
-      provider: z.literal('ernie'), // 文心一言
-      apiKey: z.string().optional(),
-      baseUrl: z.string().optional(),
-      model: z.string().default('ernie-4.0'),
-      maxTokens: z.number().optional(),
-      secretKey: z.string().optional(),
-    }),
-    z.object({
-      provider: z.literal('doubao'), // 豆包
-      apiKey: z.string().optional(),
-      baseUrl: z.string().optional(),
-      model: z.string().default('doubao-pro'),
-      maxTokens: z.number().optional(),
-    }),
-  ]).default({
-    provider: 'claude',
-    model: 'claude-3-5-sonnet-20240620',
->>>>>>> linhao
-  }),
+  })
 });
 
 export type TeamConfig = z.infer<typeof TeamConfigSchema>;

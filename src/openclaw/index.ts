@@ -551,8 +551,12 @@ agent.action('save-feishu-app-config', async (context: CardActionContext) => {
   }
 
   try {
+    // 先加载现有配置，再合并更新，避免丢失其他字段
+    const existingConfig = await configService.loadGlobalConfig();
     await configService.saveGlobalConfig({
+      ...existingConfig,
       feishu: {
+        ...existingConfig.feishu,
         appId,
         appSecret,
         scopes: []
@@ -1286,8 +1290,155 @@ async function generateSingleTeamReport(teamId: string, range: string, push: boo
   };
 }
 
+/**
+ * 演示功能
+ */
+agent.skill('demo', async (context: SkillContext) => {
+  try {
+    // 生成模拟周报
+    const mockData = await import('../modules/generator/mock-data.js');
+    const collectedData = mockData.generateMockData();
+
+    // 创建模拟团队配置
+    const mockTeamConfig: any = {
+      teamId: 'demo-team',
+      teamName: '演示团队',
+      generate: {
+        includeRisks: true,
+        includeNextWeekPlan: true,
+        detailLevel: 'medium',
+      }
+    };
+
+    // 生成周报
+    await context.sendCard({
+      title: '🎬 功能演示：正在生成模拟周报',
+      content: '正在为您生成模拟团队的周报，让您快速体验完整功能...',
+    });
+
+    // 生成周报
+    const generatorService = new ReportGeneratorService();
+    const report = await generatorService.generate(collectedData, mockTeamConfig, context, true);
+
+    // 构建周报卡片
+    const reportCard = FeishuCardBuilder.buildWeeklyReportCard(report, mockTeamConfig.teamName);
+
+    // 添加演示水印
+    reportCard.elements.unshift({
+      tag: 'div',
+      text: {
+        tag: 'lark_md',
+        content: '⚠️  **这是演示数据，所有内容均为模拟生成**'
+      }
+    });
+
+    return {
+      card: reportCard
+    };
+
+  } catch (error) {
+    logger.error('演示功能失败', { error: (error as Error).message });
+    return {
+      card: {
+        title: '❌ 演示失败',
+        content: (error as Error).message,
+      },
+    };
+  }
+});
+
+/**
+ * 帮助技能
+ */
+agent.skill('help', async (context: SkillContext) => {
+  return {
+    card: {
+      config: { wide_screen_mode: true },
+      header: {
+        title: { tag: 'plain_text', content: '🤖 智汇流周报助手使用说明' },
+        template: 'blue'
+      },
+      elements: [
+        {
+          tag: 'markdown',
+          content: '# 使用指南\n\n' +
+                  '## 📝 生成周报\n' +
+                  '- `生成上周周报` - 生成团队上周的周报\n' +
+                  '- `生成本周周报` - 生成本周周报\n' +
+                  '- `生成上月月报` - 生成上月月度总结\n' +
+                  '- `生成2024-01-01~2024-01-07周报` - 生成指定时间范围的周报\n\n' +
+                  '## ⚙️ 配置管理\n' +
+                  '- `配置` - 启动配置向导\n' +
+                  '- `团队列表` - 查看所有已配置的团队\n' +
+                  '- `测试推送` - 测试飞书推送功能\n' +
+                  '- `健康检查` - 查看服务运行状态\n\n' +
+                  '## 🎯 高级功能\n' +
+                  '- `定时推送设置` - 设置自动推送时间\n' +
+                  '- `数据源管理` - 配置需要采集的数据源\n' +
+                  '- `审核设置` - 开启/关闭周报审核流程\n\n' +
+                  '## 💡 小技巧\n' +
+                  '- 不需要严格按照命令格式，自然语言即可\n' +
+                  '- 可以直接说「帮我总结一下上周研发团队的工作」\n' +
+                  '- 生成的周报支持重新生成和直接推送'
+        }
+      ]
+    }
+  };
+});
+
+/**
+ * 欢迎技能
+ */
+agent.skill('welcome', async (context: SkillContext) => {
+  return {
+    card: {
+      config: { wide_screen_mode: true },
+      header: {
+        title: { tag: 'plain_text', content: '🎉 欢迎使用智汇流周报助手' },
+        template: 'blue'
+      },
+      elements: [
+        {
+          tag: 'markdown',
+          content: '我是您的智能团队效能助手，可以帮您自动生成专业的团队周报。\n\n' +
+                  '**✨ 核心功能：**\n' +
+                  '- 📝 自动生成周报/月报/季度总结\n' +
+                  '- 📊 智能分析项目进度和风险\n' +
+                  '- ⏰ 定时自动推送，无需人工干预\n' +
+                  '- 🔍 多数据源自动整合（文档/任务/会议/群聊）\n\n' +
+                  '**💡 您可以这样使用我：**\n' +
+                  '- 说「生成上周周报」立即生成本周周报\n' +
+                  '- 说「测试推送」测试飞书推送功能\n' +
+                  '- 说「健康检查」查看服务运行状态\n' +
+                  '- 说「配置」启动配置向导\n'
+        }
+      ],
+      actions: [
+        {
+          tag: 'button',
+          text: { tag: 'plain_text', content: '📝 立即生成周报' },
+          type: 'primary',
+          value: { action: 'generate-report', range: 'lastweek' }
+        },
+        {
+          tag: 'button',
+          text: { tag: 'plain_text', content: '⚙️ 开始配置' },
+          value: { action: 'setup' }
+        },
+        {
+          tag: 'button',
+          text: { tag: 'plain_text', content: '🎬 功能演示' },
+          value: { action: 'demo' }
+        }
+      ]
+    }
+  };
+});
+
 // 启动Agent
 agent.start().catch((error) => {
   logger.error('OpenClaw Agent启动失败', { error: error.message });
   process.exit(1);
 });
+
+export default agent;

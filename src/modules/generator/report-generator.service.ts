@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { SkillContext } from '@openclaw/sdk';
+import type { SkillContext } from '@openclaw/sdk';
 import { CollectedData, TeamConfig, WeeklyReport } from '../../types';
 import { LLMClient } from '../../common/llm/llm-client';
 import { Logger } from '../../common/logger/logger';
@@ -46,8 +46,10 @@ export class ReportGeneratorService {
     const startTime = Date.now();
 
     try {
-      // 设置LLM上下文
-      this.llmClient.setContext(context);
+      // 在OpenClaw模式下设置LLM上下文
+      if (process.env.OPENCLAW_AGENT_ID && context) {
+        this.llmClient.setContext(context);
+      }
 
       // 1. 数据预处理
       const processedData = this.preprocessData(collectedData, teamConfig);

@@ -234,7 +234,7 @@ export class FeishuPushService {
     const client = await this.initClient();
     const response: any = await client.request('POST', '/im/v1/messages', {
       params: {
-        receive_id_type: 'user_id',
+        receive_id_type: 'open_id',
       },
       data: {
         receive_id: userId,
