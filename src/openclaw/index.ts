@@ -1435,10 +1435,5 @@ agent.skill('welcome', async (context: SkillContext) => {
   };
 });
 
-// 启动Agent
-agent.start().catch((error) => {
-  logger.error('OpenClaw Agent启动失败', { error: error.message });
-  process.exit(1);
-});
-
-export default agent;
+// 导出Agent供OpenClaw运行时使用
+module.exports = agent;

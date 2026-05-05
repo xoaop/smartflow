@@ -9,13 +9,7 @@
     "version": "1.0.0",
     "author": "SmartFlow Team",
     "category": "办公效率",
-    "tags": [
-      "飞书",
-      "周报",
-      "效能",
-      "AI",
-      "团队管理"
-    ],
+    "tags": ["飞书", "周报", "效能", "AI", "团队管理"],
     "icon": "📊",
     "backgroundColor": "#165DFF"
   },
@@ -55,12 +49,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
-    "@larksuiteoapi/node-sdk": "^1.62.1",
     "dayjs": "^1.11.10",
-    "express": "^5.2.1",
     "fs-extra": "^11.2.0",
     "winston": "^3.11.0",
-    "ws": "^8.20.0",
     "yaml": "^2.3.4",
     "zod": "^3.22.4"
   },
