@@ -25,7 +25,9 @@ export const TeamConfigSchema = z.object({
     }),
     tasks: z.object({
       enabled: z.boolean().default(false),
+      /** @deprecated 请使用taskListIds替代 */
       projectIds: z.array(z.string()).default([]),
+      taskListIds: z.array(z.string()).default([]),
     }),
     meetings: z.object({
       enabled: z.boolean().default(false),

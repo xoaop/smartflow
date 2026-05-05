@@ -67,7 +67,9 @@ export interface TeamConfig {
     };
     tasks: {
       enabled: boolean;
-      projectIds: string[];
+      /** @deprecated 请使用taskListIds替代 */
+      projectIds?: string[];
+      taskListIds?: string[];
     };
     meetings: {
       enabled: boolean;
