@@ -138,7 +138,7 @@ export interface TaskItem {
     id: string;
     name: string;
   };
-  dueTime?: Date;
+  dueTime: Date | undefined;
   projectId: string;
   projectName: string;
   description: string;
@@ -295,6 +295,37 @@ export interface FeishuCardActionEvent {
   };
   host?: string;
   context?: Record<string, any>;
+}
+
+/**
+ * 飞书消息接收事件
+ */
+export interface FeishuMessageEvent {
+  sender: {
+    sender_id: {
+      open_id: string;
+      user_id?: string;
+      union_id?: string;
+      name?: string;
+    };
+    sender_type: string;
+    tenant_key: string;
+  };
+  message: {
+    message_id: string;
+    root_id?: string;
+    parent_id?: string;
+    create_time: string;
+    chat_id: string;
+    chat_type: string;
+    message_type: string;
+    content: string;
+    mentions?: Array<{
+      id: string;
+      name: string;
+      tenant_key: string;
+    }>;
+  };
 }
 
 /**

@@ -14,22 +14,20 @@ const logger = Logger.getInstance();
 export class FeishuClient {
   private cliProfile: string;
   private teamId: string;
-  private appId: string;
-  private appSecret: string;
-  private scopes: string[];
+
+  // 缓存机制
+  private cache: Map<string, { data: any; expireAt: number }> = new Map();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
 
   constructor(options: {
     profile: string;
     teamId: string;
-    appId: string;
-    appSecret: string;
+    appId?: string;
+    appSecret?: string;
     scopes?: string[];
   }) {
     this.cliProfile = options.profile;
     this.teamId = options.teamId;
-    this.appId = options.appId;
-    this.appSecret = options.appSecret;
-    this.scopes = options.scopes || [];
   }
 
   /**
@@ -51,19 +49,32 @@ export class FeishuClient {
       data?: any;
       headers?: Record<string, string>;
       retryTimes?: number;
+      cache?: boolean; // 是否启用缓存，默认GET请求启用，其他请求禁用
     }
   ): Promise<T> {
-    const { params = {}, data = {}, retryTimes = 3 } = options || {};
+    const { params = {}, data = {}, retryTimes = 3, cache = method === 'GET' } = options || {};
+
+    // 生成缓存键
+    const cacheKey = cache ? `${method}:${path}:${JSON.stringify(params)}` : '';
+
+    // 尝试从缓存获取
+    if (cache && this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey)!;
+      if (Date.now() < cached.expireAt) {
+        logger.debug('飞书API缓存命中', { path, cacheKey });
+        return cached.data as T;
+      } else {
+        this.cache.delete(cacheKey);
+      }
+    }
 
     // 构建CLI命令
     let cliCommand = `feishu api ${method.toLowerCase()} ${path}`;
 
     // 添加查询参数
     if (Object.keys(params).length > 0) {
-      const paramsStr = Object.entries(params)
-        .map(([key, value]) => `--${key} ${JSON.stringify(value)}`)
-        .join(' ');
-      cliCommand += ` ${paramsStr}`;
+      const paramsJson = JSON.stringify(params).replace(/'/g, "'\\''");
+      cliCommand += ` --params '${paramsJson}'`;
     }
 
     // 添加请求体
@@ -91,7 +102,25 @@ export class FeishuClient {
           throw new Error(`飞书API调用失败 [${response.code}]: ${response.msg || response.message}`);
         }
 
-        return (response.data || response) as T;
+        const result = (response.data || response) as T;
+
+        // 写入缓存
+        if (cache) {
+          this.cache.set(cacheKey, {
+            data: result,
+            expireAt: Date.now() + this.CACHE_TTL
+          });
+
+          // 清理过期缓存（简单LRU策略，最多保留100条）
+          if (this.cache.size > 100) {
+            const oldestKey = this.cache.keys().next().value;
+            if (oldestKey) {
+              this.cache.delete(oldestKey);
+            }
+          }
+        }
+
+        return result;
       } catch (error) {
         lastError = error as Error;
         if (i < retryTimes - 1) {
@@ -107,8 +136,8 @@ export class FeishuClient {
       }
     }
 
-    logger.error('飞书CLI调用最终失败', { path, error: lastError?.message });
-    throw lastError;
+    logger.error('飞书CLI调用最终失败', { path, error: lastError?.message || '未知错误' });
+    throw lastError || new Error('飞书CLI调用失败');
   }
 
   /**
@@ -202,11 +231,13 @@ export class FeishuClientFactory {
     if (!this.instances.has(key)) {
       // 获取合并后的飞书配置
       const feishuConfig = await this.configService.getMergedFeishuConfig(teamConfig.teamId);
+      // 飞书CLI的profile名称使用appId，保持和全局配置一致
+      const profile = feishuConfig.appId || 'default';
       this.instances.set(key, new FeishuClient({
-        profile: teamConfig.teamId,
+        profile,
         teamId: teamConfig.teamId,
-        appId: feishuConfig.appId,
-        appSecret: feishuConfig.appSecret,
+        appId: feishuConfig.appId || '',
+        appSecret: feishuConfig.appSecret || '',
         scopes: feishuConfig.scopes,
       }));
     }

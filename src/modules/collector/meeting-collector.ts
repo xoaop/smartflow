@@ -177,7 +177,7 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
    */
   private extractMinutesId(url: string): string | null {
     const match = url.match(/minutes\/([a-zA-Z0-9]+)/);
-    return match ? match[1] : null;
+    return match && match[1] ? match[1] : null;
   }
 
   /**
@@ -191,7 +191,7 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
     let match: RegExpExecArray | null;
 
     while ((match = actionItemRegex.exec(content)) !== null) {
-      const itemText = match[1].trim();
+      const itemText = match[1]?.trim();
       if (itemText) {
         actionItems.push({
           content: itemText,
