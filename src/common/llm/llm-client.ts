@@ -62,10 +62,10 @@ export class LLMClient {
     customConfig?: Partial<AnyLLMConfig>,
     retryTimes: number = 3
   ): Promise<string> {
-    // 获取全局LLM配置
+    // 获取全局LLM配置（仅用于兼容，实际优先使用OpenClaw平台能力）
     const globalConfig = await configService.getGlobalConfig();
     const llmConfig = { ...globalConfig.llm, ...customConfig } as AnyLLMConfig;
-    const targetModel = model || llmConfig.model;
+    const targetModel = model || 'ep-20260423222711-8zfcd';
 
     const startTime = Date.now();
     let lastError: Error | null = null;
@@ -79,10 +79,8 @@ export class LLMClient {
 
     for (let attempt = 0; attempt < retryTimes; attempt++) {
       try {
-        // 动态判断是否使用OpenClaw模式
-        const useOpenClawMode = !!process.env.OPENCLAW_AGENT_ID &&
-                               !!this.context &&
-                               typeof (this.context as any).llm?.chat === 'function';
+        // 强制使用OpenClaw模式，优先使用平台提供的LLM能力
+        const useOpenClawMode = true;
 
         // OpenClaw 模式
         if (useOpenClawMode) {

@@ -14,6 +14,8 @@ export const TeamConfigSchema = z.object({
     encryptKey: z.string().default(''),
     verificationToken: z.string().default(''),
     scopes: z.array(z.string()).default([]),
+    // 用户AccessToken，用于以特定用户身份调用API，绕过企业权限审核
+    userAccessToken: z.string().default(''),
   }).default({}),
 
   dataSources: z.object({

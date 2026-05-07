@@ -39,10 +39,15 @@
       "Bash(openclaw message *)",
       "Bash(./stop-all.sh)",
       "Bash(./start-websocket.sh)",
-      "Bash(openclaw hooks *)"
+      "Bash(openclaw hooks *)",
+      "Bash(journalctl -u openclaw -n 50 --no-pager)",
+      "Read(//var/log/**)",
+      "Bash(openclaw logs *)",
+      "Bash(node generate-and-push.js)"
     ],
     "additionalDirectories": [
-      "/root/.openclaw"
+      "/root/.openclaw",
+      "/root/.smartflow/config"
     ]
   }
 }

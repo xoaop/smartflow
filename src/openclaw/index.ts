@@ -27,6 +27,8 @@ agent.skill('generate', async (context: SkillContext) => {
 
     // 如果没有指定team，尝试获取用户的默认团队
     let targetTeamId = team;
+    // 临时强制使用dev团队，排查路由问题
+    targetTeamId = 'dev';
     if (!targetTeamId) {
       const globalConfig = await configService.loadGlobalConfig();
       targetTeamId = globalConfig.defaultTeamId;

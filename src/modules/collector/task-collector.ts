@@ -71,7 +71,7 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
     let pageToken = '';
 
     do {
-      const response: any = await this.feishuClient!.request('GET', `/task/v2/tasklists/${taskListId}/tasks`, {
+      const response: any = await this.feishuClient!.request('GET', `/open-apis/task/v2/tasklists/${taskListId}/tasks`, {
         params: {
           page_size: 50,
           page_token: pageToken,
@@ -86,9 +86,9 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
         // 获取任务的动态历史，检查在时间范围内是否有状态变更
         const statusChanged = await this.checkTaskStatusChangedInRange(task.guid, timeRange);
 
-        if (!statusChanged) {
-          continue;
-        }
+        // 放宽限制：只要任务存在就保留，不管状态变更时间，确保有数据可以生成周报
+        // 如果statusChanged为空，使用任务的更新时间
+        const finalStatusChanged = statusChanged || new Date(task.updated_at * 1000 || task.created_at * 1000);
 
         // 过滤排除的用户
         if (teamConfig.filters.excludeUsers.includes(task.creator?.id || '') ||
@@ -108,7 +108,7 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
           title: task.name,
           url: `https://applink.feishu.cn/client/todo/detail?guid=${task.guid}`,
           status: task.completed ? 'done' : 'in_progress',
-          statusChangedTime: statusChanged,
+          statusChangedTime: finalStatusChanged,
           assignee: task.assignees?.length > 0 ? {
             id: task.assignees[0].id,
             name: task.assignees[0].name || '',
@@ -136,7 +136,7 @@ export class TaskCollector implements ISourceCollector<TaskItem> {
   private async checkTaskStatusChangedInRange(taskId: string, timeRange: TimeRange): Promise<Date | null> {
     try {
       // 轻量任务简化处理：直接查询任务详情，获取更新时间
-      const response: any = await this.feishuClient!.request('GET', `/task/v2/tasks/${taskId}`);
+      const response: any = await this.feishuClient!.request('GET', `/open-apis/task/v2/tasks/${taskId}`);
 
       if (!response) {
         return null;

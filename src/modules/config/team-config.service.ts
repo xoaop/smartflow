@@ -60,26 +60,32 @@ export class TeamConfigService {
     }
 
     try {
-      if (this.isOpenClawEnvironment && context) {
+      // 优先尝试从文件系统读取配置，不管是否是OpenClaw环境
+      if (await fs.pathExists(this.globalConfigPath)) {
+        const content = await fs.readFile(this.globalConfigPath, 'utf-8');
+        const config = yaml.parse(content);
+        this.globalConfig = GlobalConfigSchema.parse(config);
+        logger.info('从文件系统加载全局配置成功', { path: this.globalConfigPath });
+      }
+      // 如果文件不存在，再尝试从OpenClaw KV存储读取
+      else if (this.isOpenClawEnvironment && context) {
         // OpenClaw模式下从内置KV存储读取
         const globalConfigStr = await context.kv.get('global_config');
         if (globalConfigStr) {
           this.globalConfig = GlobalConfigSchema.parse(JSON.parse(globalConfigStr));
+          logger.info('从OpenClaw KV存储加载全局配置成功');
         } else {
           // 使用默认配置
           this.globalConfig = GlobalConfigSchema.parse({});
+          logger.info('未找到全局配置文件，使用默认配置');
         }
-      } else {
-        // 本地模式下从文件读取
-        if (await fs.pathExists(this.globalConfigPath)) {
-          const content = await fs.readFile(this.globalConfigPath, 'utf-8');
-          const config = yaml.parse(content);
-          this.globalConfig = GlobalConfigSchema.parse(config);
-        } else {
-          // 创建默认配置文件
-          this.globalConfig = GlobalConfigSchema.parse({});
-          await this.saveGlobalConfig(this.globalConfig);
-        }
+      }
+      // 本地模式下创建默认配置文件
+      else {
+        // 创建默认配置文件
+        this.globalConfig = GlobalConfigSchema.parse({});
+        await this.saveGlobalConfig(this.globalConfig);
+        logger.info('已创建默认全局配置文件', { path: this.globalConfigPath });
       }
 
       return this.globalConfig;
@@ -127,20 +133,33 @@ export class TeamConfigService {
    */
   public async getAllTeamIds(context?: any): Promise<string[]> {
     try {
+      // 优先尝试从文件系统读取团队配置
+      if (await fs.pathExists(this.teamsConfigDir)) {
+        const files = await fs.readdir(this.teamsConfigDir);
+        const fileTeamIds = files
+          .filter((file: string) => file.endsWith('.yaml'))
+          .map((file: string) => file.slice(0, -5));
+
+        if (fileTeamIds.length > 0) {
+          logger.info('从文件系统加载团队ID列表成功', { count: fileTeamIds.length });
+          return fileTeamIds;
+        }
+      }
+
+      // 如果文件系统没有配置，再尝试从OpenClaw KV存储读取
       if (this.isOpenClawEnvironment && context) {
         // OpenClaw模式下从KV存储获取
         const teamIdsStr = await context.kv.get('team_ids');
-        return teamIdsStr ? JSON.parse(teamIdsStr) : [];
-      } else {
-        // 本地模式下列举目录
-        if (!await fs.pathExists(this.teamsConfigDir)) {
-          return [];
+        if (teamIdsStr) {
+          const kvTeamIds = JSON.parse(teamIdsStr);
+          logger.info('从OpenClaw KV存储加载团队ID列表成功', { count: kvTeamIds.length });
+          return kvTeamIds;
         }
-        const files = await fs.readdir(this.teamsConfigDir);
-        return files
-          .filter(file => file.endsWith('.yaml'))
-          .map(file => file.slice(0, -5));
       }
+
+      // 都没有的话返回空数组
+      logger.info('未找到任何团队配置');
+      return [];
     } catch (error) {
       logger.error('获取团队ID列表失败', { error: (error as Error).message });
       throw new Error(`获取团队ID列表失败: ${(error as Error).message}`);
@@ -167,22 +186,25 @@ export class TeamConfigService {
     try {
       let config: TeamConfig;
 
-      if (this.isOpenClawEnvironment && context) {
+      // 优先尝试从文件系统读取团队配置
+      const configPath = path.join(this.teamsConfigDir, `${teamId}.yaml`);
+      if (await fs.pathExists(configPath)) {
+        const content = await fs.readFile(configPath, 'utf-8');
+        const rawConfig = yaml.parse(content);
+        config = TeamConfigSchema.parse(rawConfig);
+        logger.info('从文件系统加载团队配置成功', { teamId, path: configPath });
+      }
+      // 如果文件不存在，再尝试从OpenClaw KV存储读取
+      else if (this.isOpenClawEnvironment && context) {
         // OpenClaw模式下从KV存储读取
         const configStr = await context.kv.get(`team_config_${teamId}`);
         if (!configStr) {
           throw new Error(`团队配置 ${teamId} 不存在`);
         }
         config = TeamConfigSchema.parse(JSON.parse(configStr));
+        logger.info('从OpenClaw KV存储加载团队配置成功', { teamId });
       } else {
-        // 本地模式下从文件读取
-        const configPath = path.join(this.teamsConfigDir, `${teamId}.yaml`);
-        if (!await fs.pathExists(configPath)) {
-          throw new Error(`团队配置文件不存在: ${configPath}`);
-        }
-        const content = await fs.readFile(configPath, 'utf-8');
-        const rawConfig = yaml.parse(content);
-        config = TeamConfigSchema.parse(rawConfig);
+        throw new Error(`团队配置文件不存在: ${configPath}`);
       }
 
       // 缓存配置

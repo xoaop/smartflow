@@ -1,6 +1,6 @@
 {
   "id": "com.feishu.smartflow",
-  "name": "SmartFlow 周报助手",
+  "name": "smartflow",
   "version": "2.0.0",
   "description": "自动采集飞书文档、任务、会议数据，智能生成团队效能周报",
   "author": "SmartFlow Team",
@@ -26,7 +26,7 @@
 
   "skills": [
     {
-      "id": "generate-weekly-report",
+      "id": "generate",
       "name": "生成周报",
       "description": "生成指定时间范围的团队周报",
       "parameters": {
@@ -115,7 +115,7 @@
         "cron": "0 18 * * 5",
         "enabled": true,
         "action": {
-          "skill": "generate-weekly-report",
+          "skill": "smartflow.generate",
           "parameters": {
             "range": "lastweek",
             "push": true
@@ -125,12 +125,25 @@
     ],
     "message": [
       {
-        "id": "mention-trigger",
-        "name": "@机器人触发",
-        "description": "当用户@机器人时触发",
-        "keywords": ["周报", "生成", "总结"],
+        "id": "keyword-trigger",
+        "name": "关键词触发",
+        "description": "当消息包含关键词时触发",
+        "keywords": ["生成周报", "生成本周周报", "生成上周周报", "上周总结", "测试推送", "团队列表", "健康检查"],
+        "mention": false,
+        "priority": 999,
         "action": {
-          "skill": "generate-weekly-report"
+          "skill": "com.feishu.smartflow.generate"
+        }
+      },
+      {
+        "id": "mention-trigger",
+        "name": "@触发",
+        "description": "当@机器人并包含关键词时触发",
+        "keywords": ["生成周报", "生成本周周报", "生成上周周报", "上周总结", "测试推送", "团队列表", "健康检查"],
+        "mention": true,
+        "priority": 999,
+        "action": {
+          "skill": "com.feishu.smartflow.generate"
         }
       }
     ]
@@ -145,7 +158,7 @@
           "id": "regenerate",
           "name": "重新生成",
           "action": {
-            "skill": "generate-weekly-report",
+            "skill": "smartflow.generate",
             "parameters": {
               "range": "${range}",
               "push": false
@@ -156,7 +169,7 @@
           "id": "push-to-group",
           "name": "推送到群",
           "action": {
-            "skill": "generate-weekly-report",
+            "skill": "smartflow.generate",
             "parameters": {
               "range": "${range}",
               "push": true

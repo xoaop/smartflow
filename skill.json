@@ -1,6 +1,6 @@
 {
   "manifest_version": "v1",
-  "id": "smartflow-weekly",
+  "id": "smartflow",
   "name": "📊 智汇流周报",
   "version": "1.0.0",
   "description": "智能团队效能周报生成器，自动整合飞书文档、任务、会议多源数据，通过大模型生成高信息密度的工作总结与风险洞察",
@@ -140,10 +140,27 @@
     ],
     "message": [
       {
+        "id": "keyword-trigger",
+        "name": "关键词触发",
+        "description": "当消息包含关键词时触发",
+        "keywords": ["生成周报", "生成本周周报", "生成上周周报", "上周总结", "测试推送", "团队列表", "健康检查"],
+        "mention": false,
+        "priority": 999,
+        "action": {
+          "skill": "generate",
+          "parameters": {
+            "range": "lastweek",
+            "push": false
+          }
+        }
+      },
+      {
         "id": "mention-trigger",
         "name": "@机器人触发",
-        "description": "当用户@机器人时触发",
-        "keywords": ["周报", "生成", "总结"],
+        "description": "当用户@机器人并包含关键词时触发",
+        "keywords": ["生成周报", "生成本周周报", "生成上周周报", "上周总结", "测试推送", "团队列表", "健康检查"],
+        "mention": true,
+        "priority": 999,
         "action": {
           "skill": "generate",
           "parameters": {

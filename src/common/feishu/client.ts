@@ -1,19 +1,20 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import * as lark from '@larksuiteoapi/node-sdk';
 import { TeamConfig } from '../../../src/types';
 import { Logger } from '../logger/logger';
 import { TeamConfigService } from '../../modules/config/team-config.service';
 
-const execAsync = promisify(exec);
 const logger = Logger.getInstance();
 
 /**
  * 飞书API客户端封装
- * 仅支持CLI模式，调用官方飞书CLI执行API请求
+ * 使用官方Node SDK实现，稳定性更高
  */
 export class FeishuClient {
-  private cliProfile: string;
+  private client: lark.Client;
   private teamId: string;
+  private appId: string;
+  private appSecret: string;
+  private userAccessToken?: string; // 用户AccessToken
 
   // 缓存机制
   private cache: Map<string, { data: any; expireAt: number }> = new Map();
@@ -22,24 +23,33 @@ export class FeishuClient {
   constructor(options: {
     profile: string;
     teamId: string;
-    appId?: string;
-    appSecret?: string;
+    appId: string;
+    appSecret: string;
     scopes?: string[];
+    userAccessToken?: string;
   }) {
-    this.cliProfile = options.profile;
     this.teamId = options.teamId;
+    this.appId = options.appId;
+    this.appSecret = options.appSecret;
+    this.userAccessToken = options.userAccessToken;
+
+    // 初始化飞书SDK客户端
+    this.client = new lark.Client({
+      appId: this.appId,
+      appSecret: this.appSecret,
+    });
   }
 
   /**
-   * 获取租户访问令牌，CLI模式下不需要手动管理
+   * 获取租户访问令牌
    */
   public async getTenantAccessToken(): Promise<string> {
-    // CLI模式下由CLI自动处理token，这里返回空字符串
+    // SDK自动处理token，这里不需要手动获取
     return '';
   }
 
   /**
-   * 通用API调用方法，通过飞书CLI执行
+   * 通用API调用方法，使用官方SDK执行
    */
   public async request<T = any>(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -68,47 +78,72 @@ export class FeishuClient {
       }
     }
 
-    // 构建CLI命令
-    let cliCommand = `feishu api ${method.toLowerCase()} ${path}`;
-
-    // 添加查询参数
-    if (Object.keys(params).length > 0) {
-      const paramsJson = JSON.stringify(params).replace(/'/g, "'\\''");
-      cliCommand += ` --params '${paramsJson}'`;
-    }
-
-    // 添加请求体
-    if (Object.keys(data).length > 0) {
-      cliCommand += ` --data '${JSON.stringify(data).replace(/'/g, "'\\''")}'`;
-    }
-
-    // 指定profile
-    cliCommand += ` --profile ${this.cliProfile}`;
-
     let lastError: Error | null = null;
-    for (let i = 0; i < retryTimes; i++) {
+
+    for (let attempt = 0; attempt < retryTimes; attempt++) {
       try {
-        logger.debug('调用飞书CLI命令', { command: cliCommand, teamId: this.teamId });
-        const { stdout, stderr } = await execAsync(cliCommand);
+        logger.debug('执行飞书API调用', { method, path, params, attempt: attempt + 1 });
 
-        if (stderr) {
-          throw new Error(`CLI调用错误: ${stderr}`);
+        // 处理路径参数（替换路径中的{param}）
+        let processedPath = path;
+        const pathParams = path.match(/\{([^}]+)\}/g) || [];
+        for (const param of pathParams) {
+          const paramName = param.slice(1, -1);
+          if (params[paramName]) {
+            processedPath = processedPath.replace(param, params[paramName]);
+            delete params[paramName];
+          }
         }
 
-        const response = JSON.parse(stdout);
+        // 构建请求选项
+        const requestOptions: any = {
+          path: processedPath,
+          method: method as any,
+        };
 
-        // CLI返回格式统一处理
+        if (Object.keys(params).length > 0) {
+          requestOptions.query = params;
+        }
+
+        if (Object.keys(data).length > 0) {
+          requestOptions.body = data;
+        }
+
+        // 合并请求头
+        const headers: Record<string, string> = { ...options?.headers };
+
+        // 如果配置了用户AccessToken，优先使用用户身份调用
+        if (this.userAccessToken) {
+          headers['Authorization'] = `Bearer ${this.userAccessToken}`;
+        }
+
+        if (Object.keys(headers).length > 0) {
+          requestOptions.headers = headers;
+        }
+
+        // 执行API请求
+        const response = await this.client.request(requestOptions);
+
+        // 检查API错误
         if (response.code !== undefined && response.code !== 0) {
-          throw new Error(`飞书API调用失败 [${response.code}]: ${response.msg || response.message}`);
+          const errorMessage = response.msg || response.message || '未知错误';
+          logger.error('飞书API返回错误', {
+            path,
+            code: response.code,
+            message: errorMessage,
+            requestId: response.requestId,
+          });
+          throw new Error(`API调用失败: ${errorMessage} (code: ${response.code})`);
         }
 
-        const result = (response.data || response) as T;
+        // 提取data字段
+        const result = response.data !== undefined ? response.data : response;
 
-        // 写入缓存
+        // 缓存结果
         if (cache) {
           this.cache.set(cacheKey, {
             data: result,
-            expireAt: Date.now() + this.CACHE_TTL
+            expireAt: Date.now() + this.CACHE_TTL,
           });
 
           // 清理过期缓存（简单LRU策略，最多保留100条）
@@ -120,24 +155,56 @@ export class FeishuClient {
           }
         }
 
-        return result;
+        logger.debug('飞书API调用成功', { path, attempt: attempt + 1 });
+        return result as T;
+
       } catch (error) {
         lastError = error as Error;
-        if (i < retryTimes - 1) {
-          // 指数退避重试
-          const delay = 1000 * Math.pow(2, i);
-          logger.warn(`飞书CLI调用失败，${delay}ms后重试`, {
+        const errorMessage = lastError.message;
+
+        // 可以重试的错误类型
+        const retryableErrors = [
+          'rate_limit',
+          'timeout',
+          '503',
+          '504',
+          '429',
+          'connection',
+          'network',
+          'ECONNRESET',
+          'ETIMEDOUT',
+          'token expired',
+          'Too Many Requests',
+          'Service Unavailable',
+        ];
+
+        // 检查是否需要重试
+        const shouldRetry = attempt < retryTimes - 1 &&
+          retryableErrors.some(keyword => errorMessage.toLowerCase().includes(keyword));
+
+        if (shouldRetry) {
+          // 指数退避
+          const delay = 1000 * Math.pow(2, attempt);
+          logger.warn('飞书API调用失败，准备重试', {
             path,
-            retry: i + 1,
-            error: lastError.message
+            attempt: attempt + 1,
+            nextAttemptIn: `${delay}ms`,
+            error: errorMessage,
           });
           await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
         }
+
+        logger.error('飞书API调用最终失败', {
+          path,
+          attempt: attempt + 1,
+          error: errorMessage,
+        });
+        break;
       }
     }
 
-    logger.error('飞书CLI调用最终失败', { path, error: lastError?.message || '未知错误' });
-    throw lastError || new Error('飞书CLI调用失败');
+    throw lastError || new Error('飞书API调用失败');
   }
 
   /**
@@ -231,14 +298,18 @@ export class FeishuClientFactory {
     if (!this.instances.has(key)) {
       // 获取合并后的飞书配置
       const feishuConfig = await this.configService.getMergedFeishuConfig(teamConfig.teamId);
-      // 飞书CLI的profile名称使用appId，保持和全局配置一致
-      const profile = feishuConfig.appId || 'cli_a97eea6dd9b85bc2';
+
+      if (!feishuConfig.appId || !feishuConfig.appSecret) {
+        throw new Error('飞书应用配置不完整，缺少appId或appSecret');
+      }
+
       this.instances.set(key, new FeishuClient({
-        profile,
+        profile: feishuConfig.appId,
         teamId: teamConfig.teamId,
-        appId: feishuConfig.appId || '',
-        appSecret: feishuConfig.appSecret || '',
+        appId: feishuConfig.appId,
+        appSecret: feishuConfig.appSecret,
         scopes: feishuConfig.scopes,
+        userAccessToken: feishuConfig.userAccessToken,
       }));
     }
     return this.instances.get(key)!;

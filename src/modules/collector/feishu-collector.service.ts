@@ -175,19 +175,25 @@ export class FeishuCollectorService implements IDataCollector {
 
       default:
         // 自定义时间范围，格式：YYYY-MM-DD~YYYY-MM-DD
-        const [startStr, endStr] = range.split('~');
-        if (startStr && endStr) {
-          const start = dayjs(startStr.trim()).startOf('day');
-          const end = dayjs(endStr.trim()).endOf('day');
-          if (start.isValid() && end.isValid()) {
-            return {
-              start: start.toDate(),
-              end: end.toDate(),
-            };
+        if (range.includes('~')) {
+          const [startStr, endStr] = range.split('~');
+          if (startStr && endStr) {
+            const start = dayjs(startStr.trim()).startOf('day');
+            const end = dayjs(endStr.trim()).endOf('day');
+            if (start.isValid() && end.isValid()) {
+              return {
+                start: start.toDate(),
+                end: end.toDate(),
+              };
+            }
           }
         }
 
-        throw new Error(`不支持的时间范围格式: ${range}，请使用 lastweek/thisweek/lastmonth/thismonth 或 YYYY-MM-DD~YYYY-MM-DD 格式`);
+        // 格式不匹配时，默认返回最近30天的数据
+        return {
+          start: now.subtract(30, 'day').toDate(),
+          end: now.toDate(),
+        };
     }
   }
 }

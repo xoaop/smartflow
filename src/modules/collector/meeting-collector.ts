@@ -68,11 +68,11 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
     let pageToken = '';
 
     do {
-      const response: any = await this.feishuClient!.request('GET', `/calendar/v4/calendars/${calendarId}/events`, {
+      const response: any = await this.feishuClient!.request('GET', `/open-apis/calendar/v4/calendars/${calendarId}/events`, {
         params: {
           start_time: String(Math.floor(timeRange.start.getTime() / 1000)),
           end_time: String(Math.floor(timeRange.end.getTime() / 1000)),
-          page_size: 100,
+          page_size: 50, // 飞书日历API要求page_size最小为50
           page_token: pageToken,
         },
       });
@@ -131,7 +131,7 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
   }> {
     try {
       // 尝试获取会议关联的纪要
-      const response: any = await this.feishuClient!.request('GET', `/vc/v1/meetings`, {
+      const response: any = await this.feishuClient!.request('GET', `/open-apis/vc/v1/meetings`, {
         params: {
           calendar_event_id: eventId,
         },
@@ -151,7 +151,7 @@ export class MeetingCollector implements ISourceCollector<MeetingItem> {
           // 从妙记URL中提取妙记ID
           const minutesId = this.extractMinutesId(meeting.minutes_url);
           if (minutesId) {
-            const minutesResponse: any = await this.feishuClient!.request('GET', `/minutes/v1/minutes/${minutesId}`);
+            const minutesResponse: any = await this.feishuClient!.request('GET', `/open-apis/minutes/v1/minutes/${minutesId}`);
             minutesContent = minutesResponse.minutes?.content || '';
 
             // 提取Action Items
